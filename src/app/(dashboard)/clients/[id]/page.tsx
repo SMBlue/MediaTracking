@@ -48,7 +48,7 @@ async function updateClient(formData: FormData) {
     data: { name: name.trim() },
   });
 
-  redirect("/clients");
+  redirect(`/mbas?client=${id}`);
 }
 
 async function deleteClient(formData: FormData) {
@@ -60,7 +60,7 @@ async function deleteClient(formData: FormData) {
     where: { id },
   });
 
-  redirect("/clients");
+  redirect("/mbas");
 }
 
 function formatCurrency(amount: number | bigint | { toNumber(): number }) {
@@ -83,6 +83,12 @@ export default async function ClientDetailPage({
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center gap-4 text-sm">
+        <Link href="/mbas" className="text-muted-foreground hover:text-foreground">
+          &larr; Back to MBAs
+        </Link>
+      </div>
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">{client.name}</h1>

@@ -1,4 +1,5 @@
 import { prisma } from "./db";
+import { Prisma } from "@prisma/client";
 
 type EntityType = "Client" | "MBA" | "Invoice" | "SpendEntry" | "InvoiceAllocation";
 type Action = "CREATE" | "UPDATE" | "DELETE";
@@ -26,7 +27,7 @@ export async function logAudit({
         entityType,
         entityId,
         action,
-        changes: changes ?? null,
+        changes: changes as Prisma.InputJsonValue | undefined,
         userId,
         userEmail,
       },

@@ -20,7 +20,7 @@ async function createClient(formData: FormData) {
     },
   });
 
-  redirect("/clients");
+  redirect("/mbas");
 }
 
 export default function NewClientPage() {
@@ -44,7 +44,7 @@ export default function NewClientPage() {
             <div className="flex gap-2">
               <Button type="submit">Create Client</Button>
               <Button type="button" variant="outline" asChild>
-                <a href="/clients">Cancel</a>
+                <a href="/mbas">Cancel</a>
               </Button>
             </div>
           </form>

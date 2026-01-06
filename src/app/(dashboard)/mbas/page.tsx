@@ -6,19 +6,34 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
 import { prisma } from "@/lib/db";
+import { AddClientModal } from "@/components/add-client-modal";
+import { ClientFilter } from "./client-filter";
 
-async function getMBAs() {
+async function getClients() {
+  return prisma.client.findMany({
+    orderBy: { name: "asc" },
+  });
+}
+
+async function getMBAs(clientId?: string) {
   return prisma.mBA.findMany({
+    where: clientId ? { clientId } : undefined,
     include: {
       client: true,
-      invoiceAllocations: true,
+      invoiceAllocations: {
+        include: {
+          invoice: true,
+        },
+      },
+      spendEntries: true,
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ client: { name: "asc" } }, { createdAt: "desc" }],
   });
 }
 
@@ -31,8 +46,44 @@ function formatCurrency(amount: number) {
   }).format(amount);
 }
 
-export default async function MBAsPage() {
-  const mbas = await getMBAs();
+export default async function MBAsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ client?: string }>;
+}) {
+  const { client: clientId } = await searchParams;
+  const clients = await getClients();
+  const mbas = await getMBAs(clientId);
+  const selectedClient = clientId
+    ? clients.find((c) => c.id === clientId)
+    : null;
+
+  // Calculate totals
+  const totals = mbas.reduce(
+    (acc, mba) => {
+      const budget = Number(mba.budget);
+      const spend = mba.spendEntries.reduce(
+        (sum, entry) => sum + Number(entry.amount),
+        0
+      );
+      const invoiceTotal = mba.invoiceAllocations
+        .filter((alloc) => alloc.invoice.type === "INVOICE")
+        .reduce((sum, alloc) => sum + Number(alloc.amount), 0);
+      const creditTotal = mba.invoiceAllocations
+        .filter((alloc) => alloc.invoice.type === "CREDIT_NOTE")
+        .reduce((sum, alloc) => sum + Number(alloc.amount), 0);
+      const invoiced = invoiceTotal - creditTotal;
+      const remaining = budget - invoiced;
+
+      return {
+        budget: acc.budget + budget,
+        spend: acc.spend + spend,
+        invoiced: acc.invoiced + invoiced,
+        remaining: acc.remaining + remaining,
+      };
+    },
+    { budget: 0, spend: 0, invoiced: 0, remaining: 0 }
+  );
 
   return (
     <div className="space-y-6">
@@ -43,14 +94,35 @@ export default async function MBAsPage() {
             Media Buying Agreements and their budgets
           </p>
         </div>
-        <Button asChild>
-          <Link href="/mbas/new">+ New MBA</Link>
-        </Button>
+        <div className="flex gap-2">
+          <AddClientModal>
+            <Button variant="outline">+ Add Client</Button>
+          </AddClientModal>
+          <Button asChild>
+            <Link
+              href={
+                clientId ? `/mbas/new?clientId=${clientId}` : "/mbas/new"
+              }
+            >
+              + New MBA
+            </Link>
+          </Button>
+        </div>
+      </div>
+
+      {/* Client Filter */}
+      <div className="flex items-center gap-4">
+        <ClientFilter clients={clients} selectedClientId={clientId} />
+        {selectedClient && (
+          <Button asChild variant="ghost" size="sm">
+            <Link href={`/clients/${selectedClient.id}`}>Edit Client</Link>
+          </Button>
+        )}
       </div>
 
       {mbas.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
-          <p>No MBAs yet.</p>
+          <p>No MBAs yet{selectedClient ? ` for ${selectedClient.name}` : ""}.</p>
           <p className="mt-2">
             <Link href="/mbas/new" className="text-primary hover:underline">
               Create your first MBA
@@ -62,10 +134,11 @@ export default async function MBAsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Client</TableHead>
+                {!clientId && <TableHead>Client</TableHead>}
                 <TableHead>MBA #</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead className="text-right">Budget</TableHead>
+                <TableHead className="text-right">Media Spend</TableHead>
                 <TableHead className="text-right">Vendor Invoiced</TableHead>
                 <TableHead className="text-right">Remaining</TableHead>
                 <TableHead>Status</TableHead>
@@ -76,20 +149,30 @@ export default async function MBAsPage() {
             <TableBody>
               {mbas.map((mba) => {
                 const budget = Number(mba.budget);
-                const invoiced = mba.invoiceAllocations.reduce(
-                  (sum, alloc) => sum + Number(alloc.amount),
+                const spend = mba.spendEntries.reduce(
+                  (sum, entry) => sum + Number(entry.amount),
                   0
                 );
+                const invoiceTotal = mba.invoiceAllocations
+                  .filter((alloc) => alloc.invoice.type === "INVOICE")
+                  .reduce((sum, alloc) => sum + Number(alloc.amount), 0);
+                const creditTotal = mba.invoiceAllocations
+                  .filter((alloc) => alloc.invoice.type === "CREDIT_NOTE")
+                  .reduce((sum, alloc) => sum + Number(alloc.amount), 0);
+                const invoiced = invoiceTotal - creditTotal;
                 const remaining = budget - invoiced;
                 const percentUsed = budget > 0 ? (invoiced / budget) * 100 : 0;
 
                 return (
                   <TableRow key={mba.id}>
-                    <TableCell>{mba.client.name}</TableCell>
+                    {!clientId && <TableCell>{mba.client.name}</TableCell>}
                     <TableCell className="font-medium">{mba.mbaNumber}</TableCell>
                     <TableCell>{mba.name}</TableCell>
                     <TableCell className="text-right">
                       {formatCurrency(budget)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatCurrency(spend)}
                     </TableCell>
                     <TableCell className="text-right">
                       {formatCurrency(invoiced)}
@@ -137,6 +220,33 @@ export default async function MBAsPage() {
                 );
               })}
             </TableBody>
+            {mbas.length > 1 && (
+              <TableFooter>
+                <TableRow>
+                  {!clientId && <TableCell />}
+                  <TableCell colSpan={2} className="font-medium">
+                    TOTALS ({mbas.length} MBAs)
+                  </TableCell>
+                  <TableCell className="text-right font-medium">
+                    {formatCurrency(totals.budget)}
+                  </TableCell>
+                  <TableCell className="text-right font-medium">
+                    {formatCurrency(totals.spend)}
+                  </TableCell>
+                  <TableCell className="text-right font-medium">
+                    {formatCurrency(totals.invoiced)}
+                  </TableCell>
+                  <TableCell
+                    className={`text-right font-medium ${
+                      totals.remaining < 0 ? "text-red-600" : ""
+                    }`}
+                  >
+                    {formatCurrency(totals.remaining)}
+                  </TableCell>
+                  <TableCell colSpan={3} />
+                </TableRow>
+              </TableFooter>
+            )}
           </Table>
         </div>
       )}
