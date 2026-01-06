@@ -1,0 +1,177 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// NextAuth models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+
+  // App-specific
+  spendEntries  SpendEntry[]
+  createdAt     DateTime @default(now())
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Application models
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  mbas      MBA[]
+}
+
+model MBA {
+  id        String    @id @default(cuid())
+  clientId  String
+  mbaNumber String    @unique
+  name      String
+  budget    Decimal   @db.Decimal(15, 2)
+  currency  String    @default("USD")
+  startDate DateTime  @db.Date
+  endDate   DateTime  @db.Date
+  status    MBAStatus @default(ACTIVE)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Client payment tracking
+  clientPaid       Boolean   @default(false)
+  clientPaidDate   DateTime? @db.Date
+  clientPaidAmount Decimal?  @db.Decimal(15, 2)
+
+  client              Client              @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  spendEntries        SpendEntry[]
+  invoiceAllocations  InvoiceAllocation[]
+}
+
+enum MBAStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+}
+
+model SpendEntry {
+  id        String   @id @default(cuid())
+  mbaId     String
+  platform  Platform
+  period    DateTime @db.Date // First day of month
+  amount    Decimal  @db.Decimal(15, 2)
+  notes     String?
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  mba       MBA      @relation(fields: [mbaId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [createdBy], references: [id])
+
+  @@unique([mbaId, platform, period])
+}
+
+enum Platform {
+  GOOGLE_ADS
+  META
+  BING
+  TIKTOK
+  LINKEDIN
+  OTHER
+}
+
+model Invoice {
+  id            String      @id @default(cuid())
+  vendor        Platform
+  invoiceNumber String
+  invoiceDate   DateTime    @db.Date
+  totalAmount   Decimal     @db.Decimal(15, 2)
+  currency      String      @default("USD")
+  type          InvoiceType @default(INVOICE)
+  isPaid        Boolean     @default(false)
+  paidDate      DateTime?   @db.Date
+  notes         String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  allocations   InvoiceAllocation[]
+
+  @@unique([vendor, invoiceNumber])
+}
+
+enum InvoiceType {
+  INVOICE
+  CREDIT_NOTE
+}
+
+model InvoiceAllocation {
+  id        String   @id @default(cuid())
+  invoiceId String
+  mbaId     String
+  amount    Decimal  @db.Decimal(15, 2)
+  createdAt DateTime @default(now())
+
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  mba       MBA      @relation(fields: [mbaId], references: [id], onDelete: Cascade)
+
+  @@unique([invoiceId, mbaId])
+}
+
+// Audit trail for tracking changes
+model AuditLog {
+  id         String   @id @default(cuid())
+  entityType String   // "MBA", "Invoice", "SpendEntry", "Client"
+  entityId   String
+  action     String   // "CREATE", "UPDATE", "DELETE"
+  changes    Json?    // { field: { old: x, new: y } }
+  userId     String?
+  userEmail  String?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
