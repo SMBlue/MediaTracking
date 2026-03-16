@@ -133,23 +133,43 @@ enum Platform {
 }
 
 model Invoice {
-  id            String      @id @default(cuid())
+  id            String        @id @default(cuid())
   vendor        Platform
   invoiceNumber String
-  invoiceDate   DateTime    @db.Date
-  totalAmount   Decimal     @db.Decimal(15, 2)
-  currency      String      @default("USD")
-  type          InvoiceType @default(INVOICE)
-  isPaid        Boolean     @default(false)
-  paidDate      DateTime?   @db.Date
+  invoiceDate   DateTime      @db.Date
+  totalAmount   Decimal       @db.Decimal(15, 2)
+  currency      String        @default("USD")
+  type          InvoiceType   @default(INVOICE)
+  status        InvoiceStatus @default(CONFIRMED)
+  sourceType    InvoiceSource @default(MANUAL)
+  isPaid        Boolean       @default(false)
+  paidDate      DateTime?     @db.Date
   notes         String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Email ingestion fields
+  emailMessageId  String?   @unique
+  emailSubject    String?
+  emailReceivedAt DateTime?
+  parseConfidence Float?
+  parseErrors     String?
 
   allocations   InvoiceAllocation[]
   lineItems     VendorInvoiceLineItem[]
 
   @@unique([vendor, invoiceNumber])
+}
+
+enum InvoiceStatus {
+  DRAFT
+  CONFIRMED
+}
+
+enum InvoiceSource {
+  MANUAL
+  CSV_UPLOAD
+  EMAIL_PARSED
 }
 
 enum InvoiceType {
@@ -226,6 +246,7 @@ model VendorInvoiceLineItem {
   platform     String?
   amount       Decimal  @db.Decimal(15, 2)
   mbaId        String?
+  confidence   Float?
   createdAt    DateTime @default(now())
 
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
@@ -259,4 +280,17 @@ enum ReconOutcome {
   REFUND
   ROLLOVER
   CLOSED_ZERO
+}
+
+model EmailSyncLog {
+  id              String   @id @default(cuid())
+  startedAt       DateTime @default(now())
+  completedAt     DateTime?
+  emailsFound     Int      @default(0)
+  emailsProcessed Int      @default(0)
+  invoicesCreated Int      @default(0)
+  errors          String?
+  status          String   @default("RUNNING") // RUNNING, COMPLETED, FAILED
+
+  @@index([startedAt])
 }
