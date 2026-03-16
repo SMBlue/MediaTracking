@@ -34,6 +34,8 @@ async function getMBAs(clientId?: string) {
       },
       spendEntries: true,
       changeOrders: true,
+      creditsIn: true,
+      creditsOut: true,
     },
     orderBy: [{ client: { name: "asc" } }, { createdAt: "desc" }],
   });

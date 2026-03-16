@@ -20,6 +20,8 @@ async function getDashboardStats() {
       invoiceAllocations: true,
       spendEntries: true,
       changeOrders: true,
+      creditsIn: true,
+      creditsOut: true,
     },
   });
 

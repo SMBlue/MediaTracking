@@ -51,6 +51,14 @@ async function getMBA(id: string) {
       changeOrders: {
         orderBy: { effectiveDate: "asc" },
       },
+      creditsOut: {
+        include: { toMba: { include: { client: true } } },
+        orderBy: { createdAt: "desc" },
+      },
+      creditsIn: {
+        include: { fromMba: { include: { client: true } } },
+        orderBy: { createdAt: "desc" },
+      },
     },
   });
 
@@ -254,6 +262,106 @@ async function deleteChangeOrder(formData: FormData) {
   redirect(`/mbas/${mbaId}`);
 }
 
+async function getOtherMBAs(excludeId: string) {
+  return prisma.mBA.findMany({
+    where: { id: { not: excludeId } },
+    include: { client: true },
+    orderBy: [{ client: { name: "asc" } }, { mbaNumber: "asc" }],
+  });
+}
+
+async function createRollover(formData: FormData) {
+  "use server";
+
+  const currentMbaId = formData.get("currentMbaId") as string;
+  const direction = formData.get("direction") as string;
+  const otherMbaId = formData.get("otherMbaId") as string;
+  const amount = parseFloat(formData.get("amount") as string);
+  const type = formData.get("type") as "JOURNAL_ENTRY" | "CREDIT_MEMO" | "CASH_CREDIT";
+  const description = (formData.get("description") as string)?.trim() || null;
+
+  if (!currentMbaId || !otherMbaId || isNaN(amount) || amount <= 0 || !type) {
+    throw new Error("All required fields must be filled");
+  }
+
+  if (currentMbaId === otherMbaId) {
+    throw new Error("Cannot transfer to the same MBA");
+  }
+
+  const fromMbaId = direction === "send" ? currentMbaId : otherMbaId;
+  const toMbaId = direction === "send" ? otherMbaId : currentMbaId;
+
+  // Verify both MBAs exist
+  const [fromMba, toMba] = await Promise.all([
+    prisma.mBA.findUnique({ where: { id: fromMbaId } }),
+    prisma.mBA.findUnique({ where: { id: toMbaId } }),
+  ]);
+  if (!fromMba || !toMba) throw new Error("One or both MBAs not found");
+
+  const record = await prisma.creditRollover.create({
+    data: { fromMbaId, toMbaId, amount, type, description },
+  });
+
+  await Promise.all([
+    logAudit({ entityType: "CreditRollover", entityId: record.id, action: "CREATE" }),
+    logAudit({
+      entityType: "MBA",
+      entityId: fromMbaId,
+      action: "UPDATE",
+      changes: { creditOut: { old: null, new: amount } },
+    }),
+    logAudit({
+      entityType: "MBA",
+      entityId: toMbaId,
+      action: "UPDATE",
+      changes: { creditIn: { old: null, new: amount } },
+    }),
+  ]);
+
+  redirect(`/mbas/${currentMbaId}`);
+}
+
+async function deleteRollover(formData: FormData) {
+  "use server";
+
+  const rolloverId = formData.get("rolloverId") as string;
+  const currentMbaId = formData.get("currentMbaId") as string;
+
+  const record = await prisma.creditRollover.findUnique({ where: { id: rolloverId } });
+  if (!record) throw new Error("Rollover not found");
+
+  await prisma.creditRollover.delete({ where: { id: rolloverId } });
+
+  await Promise.all([
+    logAudit({
+      entityType: "CreditRollover",
+      entityId: rolloverId,
+      action: "DELETE",
+      changes: { amount: { old: Number(record.amount), new: null } },
+    }),
+    logAudit({
+      entityType: "MBA",
+      entityId: record.fromMbaId,
+      action: "UPDATE",
+      changes: { creditOut: { old: Number(record.amount), new: null } },
+    }),
+    logAudit({
+      entityType: "MBA",
+      entityId: record.toMbaId,
+      action: "UPDATE",
+      changes: { creditIn: { old: Number(record.amount), new: null } },
+    }),
+  ]);
+
+  redirect(`/mbas/${currentMbaId}`);
+}
+
+const ROLLOVER_TYPE_LABELS: Record<string, string> = {
+  JOURNAL_ENTRY: "Journal Entry",
+  CREDIT_MEMO: "Credit Memo",
+  CASH_CREDIT: "Cash Credit",
+};
+
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -295,11 +403,15 @@ export default async function MBADetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const mba = await getMBA(id);
+  const [mba, otherMBAs] = await Promise.all([getMBA(id), getOtherMBAs(id)]);
 
   const originalBudget = Number(mba.budget);
   const effectiveBudget = calculateEffectiveBudget(mba);
   const hasChangeOrders = mba.changeOrders.length > 0;
+  const hasRollovers = mba.creditsIn.length > 0 || mba.creditsOut.length > 0;
+  const changeOrderTotal = mba.changeOrders.reduce((sum, co) => sum + Number(co.amount), 0);
+  const creditsInTotal = mba.creditsIn.reduce((sum, cr) => sum + Number(cr.amount), 0);
+  const creditsOutTotal = mba.creditsOut.reduce((sum, cr) => sum + Number(cr.amount), 0);
 
   // Calculate invoiced amounts, accounting for credit notes
   const invoiceTotal = mba.invoiceAllocations
@@ -388,9 +500,14 @@ export default async function MBADetailPage({
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{formatCurrency(effectiveBudget)}</p>
-            {hasChangeOrders && (
+            {(hasChangeOrders || hasRollovers) && (
               <p className="text-xs text-muted-foreground">
-                Original: {formatCurrency(originalBudget)}
+                {[
+                  `Original: ${formatCurrency(originalBudget)}`,
+                  changeOrderTotal !== 0 ? `${changeOrderTotal > 0 ? "+" : ""}Change Orders: ${formatCurrency(changeOrderTotal)}` : null,
+                  creditsInTotal > 0 ? `+ Credits In: ${formatCurrency(creditsInTotal)}` : null,
+                  creditsOutTotal > 0 ? `− Credits Out: ${formatCurrency(creditsOutTotal)}` : null,
+                ].filter(Boolean).join(" ")}
               </p>
             )}
           </CardContent>
@@ -578,6 +695,199 @@ export default async function MBADetailPage({
                 />
               </div>
               <Button type="submit" size="sm">Add Change Order</Button>
+            </form>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Credits & Rollovers */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Credits &amp; Rollovers</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Credits Received */}
+          <div>
+            <h4 className="text-sm font-medium mb-2">Credits Received</h4>
+            {mba.creditsIn.length === 0 ? (
+              <p className="text-muted-foreground text-sm">No credits received</p>
+            ) : (
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>From MBA</TableHead>
+                      <TableHead>Client</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {mba.creditsIn.map((cr) => (
+                      <TableRow key={cr.id}>
+                        <TableCell>
+                          <Link href={`/mbas/${cr.fromMba.id}`} className="hover:underline font-medium">
+                            {cr.fromMba.mbaNumber}
+                          </Link>
+                        </TableCell>
+                        <TableCell>{cr.fromMba.client.name}</TableCell>
+                        <TableCell className="text-right text-green-600 font-medium">
+                          +{formatCurrency(Number(cr.amount))}
+                        </TableCell>
+                        <TableCell>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                            {ROLLOVER_TYPE_LABELS[cr.type] || cr.type}
+                          </span>
+                        </TableCell>
+                        <TableCell>{formatDate(cr.createdAt)}</TableCell>
+                        <TableCell className="text-muted-foreground">{cr.description || "-"}</TableCell>
+                        <TableCell>
+                          <form action={deleteRollover}>
+                            <input type="hidden" name="rolloverId" value={cr.id} />
+                            <input type="hidden" name="currentMbaId" value={mba.id} />
+                            <Button type="submit" variant="ghost" size="sm" className="text-red-500 hover:text-red-700 h-6 w-6 p-0">
+                              &times;
+                            </Button>
+                          </form>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <p className="text-sm font-medium text-right mt-1">
+                  Subtotal: {formatCurrency(creditsInTotal)}
+                </p>
+              </>
+            )}
+          </div>
+
+          {/* Credits Sent */}
+          <div>
+            <h4 className="text-sm font-medium mb-2">Credits Sent</h4>
+            {mba.creditsOut.length === 0 ? (
+              <p className="text-muted-foreground text-sm">No credits sent</p>
+            ) : (
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>To MBA</TableHead>
+                      <TableHead>Client</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {mba.creditsOut.map((cr) => (
+                      <TableRow key={cr.id}>
+                        <TableCell>
+                          <Link href={`/mbas/${cr.toMba.id}`} className="hover:underline font-medium">
+                            {cr.toMba.mbaNumber}
+                          </Link>
+                        </TableCell>
+                        <TableCell>{cr.toMba.client.name}</TableCell>
+                        <TableCell className="text-right text-red-600 font-medium">
+                          -{formatCurrency(Number(cr.amount))}
+                        </TableCell>
+                        <TableCell>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                            {ROLLOVER_TYPE_LABELS[cr.type] || cr.type}
+                          </span>
+                        </TableCell>
+                        <TableCell>{formatDate(cr.createdAt)}</TableCell>
+                        <TableCell className="text-muted-foreground">{cr.description || "-"}</TableCell>
+                        <TableCell>
+                          <form action={deleteRollover}>
+                            <input type="hidden" name="rolloverId" value={cr.id} />
+                            <input type="hidden" name="currentMbaId" value={mba.id} />
+                            <Button type="submit" variant="ghost" size="sm" className="text-red-500 hover:text-red-700 h-6 w-6 p-0">
+                              &times;
+                            </Button>
+                          </form>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <p className="text-sm font-medium text-right mt-1">
+                  Subtotal: {formatCurrency(creditsOutTotal)}
+                </p>
+              </>
+            )}
+          </div>
+
+          {/* Transfer Credit Form */}
+          <div className="border-t pt-4">
+            <p className="text-sm font-medium mb-3">Transfer Credit</p>
+            <form action={createRollover} className="space-y-3">
+              <input type="hidden" name="currentMbaId" value={mba.id} />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="cr-direction" className="text-xs">Direction</Label>
+                  <Select name="direction" defaultValue="send">
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="send">Send FROM this MBA</SelectItem>
+                      <SelectItem value="receive">Receive INTO this MBA</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="cr-other" className="text-xs">Other MBA</Label>
+                  <Select name="otherMbaId" required>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select MBA" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {otherMBAs.map((other) => (
+                        <SelectItem key={other.id} value={other.id}>
+                          {other.client.name} - {other.mbaNumber} ({other.name})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="cr-amount" className="text-xs">Amount</Label>
+                  <Input
+                    id="cr-amount"
+                    name="amount"
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    placeholder="0.00"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="cr-type" className="text-xs">Type</Label>
+                  <Select name="type" defaultValue="JOURNAL_ENTRY">
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="JOURNAL_ENTRY">Journal Entry</SelectItem>
+                      <SelectItem value="CREDIT_MEMO">Credit Memo</SelectItem>
+                      <SelectItem value="CASH_CREDIT">Cash Credit</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="cr-desc" className="text-xs">Description (optional)</Label>
+                  <Input id="cr-desc" name="description" placeholder="e.g., Q1 rollover" />
+                </div>
+              </div>
+              <Button type="submit" size="sm">Transfer Credit</Button>
             </form>
           </div>
         </CardContent>
