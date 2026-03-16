@@ -6,6 +6,18 @@ import { Button } from "@/components/ui/button";
 import { prisma } from "@/lib/db";
 import { calculateEffectiveBudget } from "@/lib/budget";
 
+async function getEmailIngestionStatus() {
+  try {
+    const lastSync = await prisma.emailSyncLog.findFirst({
+      orderBy: { startedAt: "desc" },
+    });
+    const draftCount = await prisma.invoice.count({ where: { status: "DRAFT" } });
+    return { lastSync, draftCount };
+  } catch {
+    return { lastSync: null, draftCount: 0 };
+  }
+}
+
 async function getDashboardStats() {
   const [mbaCount, activeCount, clientCount] = await Promise.all([
     prisma.mBA.count(),
@@ -91,7 +103,10 @@ function formatCurrency(amount: number) {
 }
 
 export default async function DashboardPage() {
-  const stats = await getDashboardStats();
+  const [stats, emailStatus] = await Promise.all([
+    getDashboardStats(),
+    getEmailIngestionStatus(),
+  ]);
 
   return (
     <div className="space-y-8">
@@ -245,6 +260,53 @@ export default async function DashboardPage() {
           </Button>
         </div>
       )}
+
+      {/* Email Ingestion Status */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Email Ingestion</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!emailStatus.lastSync ? (
+            <div className="text-sm text-muted-foreground">
+              <p>Email invoice processing is not yet configured.</p>
+              <p className="mt-1">
+                Set up Gmail and Anthropic API credentials to enable automatic
+                invoice parsing from email.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-4 gap-4 text-sm">
+              <div>
+                <p className="text-muted-foreground">Last Sync</p>
+                <p className="font-medium">
+                  {new Date(emailStatus.lastSync.startedAt).toLocaleString()}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Emails Processed</p>
+                <p className="font-medium">{emailStatus.lastSync.emailsProcessed}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Invoices Created</p>
+                <p className="font-medium">{emailStatus.lastSync.invoicesCreated}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Drafts Pending</p>
+                <p className="font-medium">
+                  {emailStatus.draftCount > 0 ? (
+                    <Link href="/invoices/drafts" className="text-purple-600 hover:underline">
+                      {emailStatus.draftCount} to review
+                    </Link>
+                  ) : (
+                    "None"
+                  )}
+                </p>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
