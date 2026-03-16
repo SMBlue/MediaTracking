@@ -13,7 +13,7 @@ const navItems = [
   { href: "/audit", label: "Audit Log" },
 ];
 
-export function Nav() {
+export function Nav({ draftCount = 0 }: { draftCount?: number }) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -38,13 +38,18 @@ export function Nav() {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "text-sm font-medium transition-colors hover:text-primary",
+                    "text-sm font-medium transition-colors hover:text-primary relative",
                     pathname === item.href
                       ? "text-foreground"
                       : "text-muted-foreground"
                   )}
                 >
                   {item.label}
+                  {item.href === "/invoices" && draftCount > 0 && (
+                    <span className="absolute -top-2 -right-4 inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold text-white bg-purple-600 rounded-full">
+                      {draftCount}
+                    </span>
+                  )}
                 </Link>
               ))}
             </div>

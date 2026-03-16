@@ -110,6 +110,34 @@ async function deleteInvoice(formData: FormData) {
   redirect("/invoices");
 }
 
+async function confirmDraft(formData: FormData) {
+  "use server";
+  const id = formData.get("id") as string;
+  await prisma.invoice.update({
+    where: { id },
+    data: { status: "CONFIRMED" },
+  });
+  await logAudit({
+    entityType: "Invoice",
+    entityId: id,
+    action: "UPDATE",
+    changes: { status: { old: "DRAFT", new: "CONFIRMED" } },
+  });
+  redirect(`/invoices/${id}`);
+}
+
+async function discardDraft(formData: FormData) {
+  "use server";
+  const id = formData.get("id") as string;
+  await prisma.invoice.delete({ where: { id } });
+  await logAudit({
+    entityType: "Invoice",
+    entityId: id,
+    action: "DELETE",
+  });
+  redirect("/invoices/drafts");
+}
+
 async function updateLineItemMBA(formData: FormData) {
   "use server";
 
@@ -169,8 +197,62 @@ export default async function InvoiceDetailPage({
     0
   );
 
+  function confidenceBadge(confidence: number | null) {
+    if (confidence === null) return null;
+    if (confidence >= 0.8) {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+          High ({Math.round(confidence * 100)}%)
+        </span>
+      );
+    }
+    if (confidence >= 0.5) {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+          Medium ({Math.round(confidence * 100)}%)
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+        Low ({Math.round(confidence * 100)}%)
+      </span>
+    );
+  }
+
   return (
     <div className="space-y-6">
+      {invoice.status === "DRAFT" && (
+        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-purple-800 font-medium">
+                Draft Invoice — Pending Review
+              </p>
+              <p className="text-purple-600 text-sm">
+                This invoice was auto-parsed from email. Review the details and
+                confirm or discard.
+                {invoice.parseConfidence !== null && (
+                  <> Parse confidence: {confidenceBadge(invoice.parseConfidence)}</>
+                )}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <form action={confirmDraft}>
+                <input type="hidden" name="id" value={invoice.id} />
+                <Button type="submit">Confirm</Button>
+              </form>
+              <form action={discardDraft}>
+                <input type="hidden" name="id" value={invoice.id} />
+                <Button type="submit" variant="destructive">
+                  Discard
+                </Button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">{invoice.invoiceNumber}</h1>
@@ -276,6 +358,7 @@ export default async function InvoiceDetailPage({
                     <TableHead>Campaign Name</TableHead>
                     <TableHead>Platform</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
+                    {invoice.status === "DRAFT" && <TableHead>Confidence</TableHead>}
                     <TableHead>MBA Assignment</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -285,6 +368,9 @@ export default async function InvoiceDetailPage({
                       <TableCell className="font-medium">{item.campaignName}</TableCell>
                       <TableCell>{item.platform || "–"}</TableCell>
                       <TableCell className="text-right">{formatCurrency(Number(item.amount))}</TableCell>
+                      {invoice.status === "DRAFT" && (
+                        <TableCell>{confidenceBadge(item.confidence)}</TableCell>
+                      )}
                       <TableCell>
                         <form action={updateLineItemMBA} className="flex items-center gap-1">
                           <input type="hidden" name="lineItemId" value={item.id} />
