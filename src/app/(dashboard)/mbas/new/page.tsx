@@ -42,6 +42,7 @@ async function createMBA(formData: FormData) {
   const startDate = formData.get("startDate") as string;
   const endDate = formData.get("endDate") as string;
   const status = formData.get("status") as "DRAFT" | "ACTIVE" | "RECONCILING" | "CLOSED";
+  const netsuiteProjectNumber = (formData.get("netsuiteProjectNumber") as string)?.trim() || null;
 
   if (!clientId || !name || isNaN(budget) || !startDate || !endDate) {
     throw new Error("All fields are required");
@@ -68,6 +69,7 @@ async function createMBA(formData: FormData) {
       startDate: new Date(startDate),
       endDate: new Date(endDate),
       status,
+      netsuiteProjectNumber,
     },
   });
 
@@ -198,6 +200,15 @@ export default async function NewMBAPage({
                   required
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="netsuiteProjectNumber">NetSuite Project #</Label>
+              <Input
+                id="netsuiteProjectNumber"
+                name="netsuiteProjectNumber"
+                placeholder="e.g., 4504"
+              />
             </div>
 
             <div className="space-y-2">

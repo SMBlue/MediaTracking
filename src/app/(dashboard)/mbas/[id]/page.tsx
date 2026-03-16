@@ -356,6 +356,31 @@ async function deleteRollover(formData: FormData) {
   redirect(`/mbas/${currentMbaId}`);
 }
 
+async function updateNetsuiteProject(formData: FormData) {
+  "use server";
+
+  const id = formData.get("id") as string;
+  const netsuiteProjectNumber = (formData.get("netsuiteProjectNumber") as string)?.trim() || null;
+
+  const existing = await prisma.mBA.findUnique({ where: { id } });
+
+  await prisma.mBA.update({
+    where: { id },
+    data: { netsuiteProjectNumber },
+  });
+
+  if (existing && existing.netsuiteProjectNumber !== netsuiteProjectNumber) {
+    await logAudit({
+      entityType: "MBA",
+      entityId: id,
+      action: "UPDATE",
+      changes: { netsuiteProjectNumber: { old: existing.netsuiteProjectNumber, new: netsuiteProjectNumber } },
+    });
+  }
+
+  redirect(`/mbas/${id}`);
+}
+
 const ROLLOVER_TYPE_LABELS: Record<string, string> = {
   JOURNAL_ENTRY: "Journal Entry",
   CREDIT_MEMO: "Credit Memo",
@@ -468,6 +493,21 @@ export default async function MBADetailPage({
           <p className="text-sm text-muted-foreground">
             {formatDate(mba.startDate)} - {formatDate(mba.endDate)}
           </p>
+          <div className="flex items-center gap-2 mt-1">
+            <form action={updateNetsuiteProject} className="flex items-center gap-1">
+              <input type="hidden" name="id" value={mba.id} />
+              <span className="text-xs text-muted-foreground">NS Project:</span>
+              <Input
+                name="netsuiteProjectNumber"
+                defaultValue={mba.netsuiteProjectNumber || ""}
+                placeholder="Not set"
+                className="h-6 w-24 text-xs"
+              />
+              <Button type="submit" variant="ghost" size="sm" className="h-6 text-xs px-2">
+                Save
+              </Button>
+            </form>
+          </div>
         </div>
         <div className="flex gap-2">
           <form action={updateMBAStatus}>

@@ -140,6 +140,7 @@ export default async function MBAsPage({
               <TableRow>
                 {!clientId && <TableHead>Client</TableHead>}
                 <TableHead>MBA #</TableHead>
+                <TableHead>NS #</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead className="text-right">Budget</TableHead>
                 <TableHead className="text-right">Media Spend</TableHead>
@@ -171,6 +172,7 @@ export default async function MBAsPage({
                   <TableRow key={mba.id}>
                     {!clientId && <TableCell>{mba.client.name}</TableCell>}
                     <TableCell className="font-medium">{mba.mbaNumber}</TableCell>
+                    <TableCell className="text-muted-foreground text-sm">{mba.netsuiteProjectNumber || "–"}</TableCell>
                     <TableCell>{mba.name}</TableCell>
                     <TableCell className="text-right">
                       {formatCurrency(budget)}
@@ -230,7 +232,7 @@ export default async function MBAsPage({
               <TableFooter>
                 <TableRow>
                   {!clientId && <TableCell />}
-                  <TableCell colSpan={2} className="font-medium">
+                  <TableCell colSpan={3} className="font-medium">
                     TOTALS ({mbas.length} MBAs)
                   </TableCell>
                   <TableCell className="text-right font-medium">
