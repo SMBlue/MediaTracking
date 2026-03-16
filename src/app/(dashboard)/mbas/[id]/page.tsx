@@ -125,7 +125,7 @@ async function updateMBAStatus(formData: FormData) {
   "use server";
 
   const id = formData.get("id") as string;
-  const status = formData.get("status") as "DRAFT" | "ACTIVE" | "CLOSED";
+  const status = formData.get("status") as "DRAFT" | "ACTIVE" | "RECONCILING" | "CLOSED";
 
   const existing = await prisma.mBA.findUnique({ where: { id } });
 
@@ -274,6 +274,8 @@ export default async function MBADetailPage({
                   ? "bg-green-100 text-green-700"
                   : mba.status === "CLOSED"
                   ? "bg-gray-100 text-gray-700"
+                  : mba.status === "RECONCILING"
+                  ? "bg-purple-100 text-purple-700"
                   : "bg-yellow-100 text-yellow-700"
               }`}
             >
@@ -297,6 +299,7 @@ export default async function MBADetailPage({
               <SelectContent>
                 <SelectItem value="DRAFT">Draft</SelectItem>
                 <SelectItem value="ACTIVE">Active</SelectItem>
+                <SelectItem value="RECONCILING">Reconciling</SelectItem>
                 <SelectItem value="CLOSED">Closed</SelectItem>
               </SelectContent>
             </Select>

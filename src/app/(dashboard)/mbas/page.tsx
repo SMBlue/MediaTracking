@@ -194,6 +194,8 @@ export default async function MBAsPage({
                             ? "bg-green-100 text-green-700"
                             : mba.status === "CLOSED"
                             ? "bg-gray-100 text-gray-700"
+                            : mba.status === "RECONCILING"
+                            ? "bg-purple-100 text-purple-700"
                             : "bg-yellow-100 text-yellow-700"
                         }`}
                       >

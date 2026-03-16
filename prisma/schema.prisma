@@ -87,14 +87,22 @@ model MBA {
   clientPaidDate   DateTime? @db.Date
   clientPaidAmount Decimal?  @db.Decimal(15, 2)
 
+  netsuiteProjectNumber String?
+
   client              Client              @relation(fields: [clientId], references: [id], onDelete: Cascade)
   spendEntries        SpendEntry[]
   invoiceAllocations  InvoiceAllocation[]
+  changeOrders        ChangeOrder[]
+  creditsOut          CreditRollover[]    @relation("CreditsOut")
+  creditsIn           CreditRollover[]    @relation("CreditsIn")
+  vendorLineItems     VendorInvoiceLineItem[]
+  reconciliation      ReconciliationRecord?
 }
 
 enum MBAStatus {
   DRAFT
   ACTIVE
+  RECONCILING
   CLOSED
 }
 
@@ -139,6 +147,7 @@ model Invoice {
   updatedAt     DateTime    @updatedAt
 
   allocations   InvoiceAllocation[]
+  lineItems     VendorInvoiceLineItem[]
 
   @@unique([vendor, invoiceNumber])
 }
@@ -174,4 +183,80 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@index([createdAt])
+}
+
+model ChangeOrder {
+  id            String   @id @default(cuid())
+  mbaId         String
+  amount        Decimal  @db.Decimal(15, 2)
+  description   String
+  effectiveDate DateTime @db.Date
+  netsuiteRef   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  mba MBA @relation(fields: [mbaId], references: [id], onDelete: Cascade)
+}
+
+model CreditRollover {
+  id          String       @id @default(cuid())
+  fromMbaId   String
+  toMbaId     String
+  amount      Decimal      @db.Decimal(15, 2)
+  type        RolloverType
+  description String?
+  netsuiteRef String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  fromMba MBA @relation("CreditsOut", fields: [fromMbaId], references: [id], onDelete: Cascade)
+  toMba   MBA @relation("CreditsIn", fields: [toMbaId], references: [id], onDelete: Cascade)
+}
+
+enum RolloverType {
+  JOURNAL_ENTRY
+  CREDIT_MEMO
+  CASH_CREDIT
+}
+
+model VendorInvoiceLineItem {
+  id           String   @id @default(cuid())
+  invoiceId    String
+  campaignName String
+  platform     String?
+  amount       Decimal  @db.Decimal(15, 2)
+  mbaId        String?
+  createdAt    DateTime @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  mba     MBA?    @relation(fields: [mbaId], references: [id], onDelete: SetNull)
+}
+
+model ReconciliationRecord {
+  id           String        @id @default(cuid())
+  mbaId        String        @unique
+  status       ReconStatus   @default(PENDING)
+  finalBalance Decimal?      @db.Decimal(15, 2)
+  outcome      ReconOutcome?
+  rolloverId   String?
+  notes        String?
+  confirmedBy  String?
+  confirmedAt  DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  mba MBA @relation(fields: [mbaId], references: [id], onDelete: Cascade)
+}
+
+enum ReconStatus {
+  PENDING
+  IN_REVIEW
+  CONFIRMED
+  CLOSED
+}
+
+enum ReconOutcome {
+  REFUND
+  ROLLOVER
+  CLOSED_ZERO
 }

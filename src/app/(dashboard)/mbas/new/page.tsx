@@ -41,7 +41,7 @@ async function createMBA(formData: FormData) {
   const currency = formData.get("currency") as string;
   const startDate = formData.get("startDate") as string;
   const endDate = formData.get("endDate") as string;
-  const status = formData.get("status") as "DRAFT" | "ACTIVE" | "CLOSED";
+  const status = formData.get("status") as "DRAFT" | "ACTIVE" | "RECONCILING" | "CLOSED";
 
   if (!clientId || !name || isNaN(budget) || !startDate || !endDate) {
     throw new Error("All fields are required");
@@ -209,6 +209,7 @@ export default async function NewMBAPage({
                 <SelectContent>
                   <SelectItem value="DRAFT">Draft</SelectItem>
                   <SelectItem value="ACTIVE">Active</SelectItem>
+                  <SelectItem value="RECONCILING">Reconciling</SelectItem>
                   <SelectItem value="CLOSED">Closed</SelectItem>
                 </SelectContent>
               </Select>
