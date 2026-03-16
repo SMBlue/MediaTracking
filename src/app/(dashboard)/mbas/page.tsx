@@ -12,6 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { prisma } from "@/lib/db";
+import { calculateEffectiveBudget } from "@/lib/budget";
 import { AddClientModal } from "@/components/add-client-modal";
 import { ClientFilter } from "./client-filter";
 
@@ -32,6 +33,7 @@ async function getMBAs(clientId?: string) {
         },
       },
       spendEntries: true,
+      changeOrders: true,
     },
     orderBy: [{ client: { name: "asc" } }, { createdAt: "desc" }],
   });
@@ -61,7 +63,7 @@ export default async function MBAsPage({
   // Calculate totals
   const totals = mbas.reduce(
     (acc, mba) => {
-      const budget = Number(mba.budget);
+      const budget = calculateEffectiveBudget(mba);
       const spend = mba.spendEntries.reduce(
         (sum, entry) => sum + Number(entry.amount),
         0
@@ -148,7 +150,7 @@ export default async function MBAsPage({
             </TableHeader>
             <TableBody>
               {mbas.map((mba) => {
-                const budget = Number(mba.budget);
+                const budget = calculateEffectiveBudget(mba);
                 const spend = mba.spendEntries.reduce(
                   (sum, entry) => sum + Number(entry.amount),
                   0

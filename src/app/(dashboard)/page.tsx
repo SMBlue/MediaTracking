@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { prisma } from "@/lib/db";
+import { calculateEffectiveBudget } from "@/lib/budget";
 
 async function getDashboardStats() {
   const [mbaCount, activeCount, clientCount] = await Promise.all([
@@ -18,11 +19,12 @@ async function getDashboardStats() {
     include: {
       invoiceAllocations: true,
       spendEntries: true,
+      changeOrders: true,
     },
   });
 
   const totalBudget = activeMBAs.reduce(
-    (sum, mba) => sum + Number(mba.budget),
+    (sum, mba) => sum + calculateEffectiveBudget(mba),
     0
   );
 
@@ -53,7 +55,7 @@ async function getDashboardStats() {
     .reduce((sum, mba) => sum + Number(mba.clientPaidAmount || mba.budget), 0);
   const totalOutstanding = activeMBAs
     .filter((mba) => !mba.clientPaid)
-    .reduce((sum, mba) => sum + Number(mba.budget), 0);
+    .reduce((sum, mba) => sum + calculateEffectiveBudget(mba), 0);
 
   return {
     mbaCount,

@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/table";
 import { prisma } from "@/lib/db";
 import { logAudit, computeChanges } from "@/lib/audit";
+import { calculateEffectiveBudget } from "@/lib/budget";
 
 const PLATFORMS = [
   { value: "GOOGLE_ADS", label: "Google Ads" },
@@ -46,6 +47,9 @@ async function getMBA(id: string) {
           invoice: true,
         },
         orderBy: { createdAt: "desc" },
+      },
+      changeOrders: {
+        orderBy: { effectiveDate: "asc" },
       },
     },
   });
@@ -193,6 +197,63 @@ async function updateClientPayment(formData: FormData) {
   redirect(`/mbas/${id}`);
 }
 
+async function addChangeOrder(formData: FormData) {
+  "use server";
+
+  const mbaId = formData.get("mbaId") as string;
+  const amount = parseFloat(formData.get("amount") as string);
+  const description = (formData.get("description") as string)?.trim();
+  const effectiveDateStr = formData.get("effectiveDate") as string;
+
+  if (!mbaId || isNaN(amount) || amount === 0 || !description || !effectiveDateStr) {
+    throw new Error("All fields are required and amount cannot be zero");
+  }
+
+  const mba = await prisma.mBA.findUnique({ where: { id: mbaId } });
+  if (!mba) throw new Error("MBA not found");
+
+  const record = await prisma.changeOrder.create({
+    data: {
+      mbaId,
+      amount,
+      description,
+      effectiveDate: new Date(effectiveDateStr),
+    },
+  });
+
+  await logAudit({
+    entityType: "ChangeOrder",
+    entityId: record.id,
+    action: "CREATE",
+  });
+
+  redirect(`/mbas/${mbaId}`);
+}
+
+async function deleteChangeOrder(formData: FormData) {
+  "use server";
+
+  const changeOrderId = formData.get("changeOrderId") as string;
+  const mbaId = formData.get("mbaId") as string;
+
+  const record = await prisma.changeOrder.findUnique({ where: { id: changeOrderId } });
+  if (!record) throw new Error("Change order not found");
+
+  await prisma.changeOrder.delete({ where: { id: changeOrderId } });
+
+  await logAudit({
+    entityType: "ChangeOrder",
+    entityId: changeOrderId,
+    action: "DELETE",
+    changes: {
+      amount: { old: Number(record.amount), new: null },
+      description: { old: record.description, new: null },
+    },
+  });
+
+  redirect(`/mbas/${mbaId}`);
+}
+
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -236,7 +297,9 @@ export default async function MBADetailPage({
   const { id } = await params;
   const mba = await getMBA(id);
 
-  const budget = Number(mba.budget);
+  const originalBudget = Number(mba.budget);
+  const effectiveBudget = calculateEffectiveBudget(mba);
+  const hasChangeOrders = mba.changeOrders.length > 0;
 
   // Calculate invoiced amounts, accounting for credit notes
   const invoiceTotal = mba.invoiceAllocations
@@ -251,8 +314,8 @@ export default async function MBADetailPage({
     (sum, entry) => sum + Number(entry.amount),
     0
   );
-  const remaining = budget - totalInvoiced;
-  const percentUsed = budget > 0 ? (totalInvoiced / budget) * 100 : 0;
+  const remaining = effectiveBudget - totalInvoiced;
+  const percentUsed = effectiveBudget > 0 ? (totalInvoiced / effectiveBudget) * 100 : 0;
   const variance = totalSpend - totalInvoiced;
 
   // Group spend by platform
@@ -261,6 +324,11 @@ export default async function MBADetailPage({
     acc[platform] = (acc[platform] || 0) + Number(entry.amount);
     return acc;
   }, {} as Record<string, number>);
+
+  // Calculate running budget for change orders table
+  let runningBudget = originalBudget;
+
+  const today = new Date().toISOString().split("T")[0];
 
   return (
     <div className="space-y-6">
@@ -315,11 +383,16 @@ export default async function MBADetailPage({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Budget
+              {hasChangeOrders ? "Effective Budget" : "Budget"}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatCurrency(budget)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(effectiveBudget)}</p>
+            {hasChangeOrders && (
+              <p className="text-xs text-muted-foreground">
+                Original: {formatCurrency(originalBudget)}
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -413,6 +486,103 @@ export default async function MBADetailPage({
         </CardContent>
       </Card>
 
+      {/* Change Orders */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            Change Orders
+            {mba.changeOrders.length > 0 && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                {mba.changeOrders.length}
+              </span>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {mba.changeOrders.length === 0 ? (
+            <p className="text-muted-foreground text-sm">No change orders</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="text-right">Running Budget</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {mba.changeOrders.map((co) => {
+                  const coAmount = Number(co.amount);
+                  runningBudget += coAmount;
+                  return (
+                    <TableRow key={co.id}>
+                      <TableCell>{formatDate(co.effectiveDate)}</TableCell>
+                      <TableCell>{co.description}</TableCell>
+                      <TableCell className={`text-right font-medium ${coAmount >= 0 ? "text-green-600" : "text-red-600"}`}>
+                        {coAmount >= 0 ? "+" : ""}{formatCurrency(coAmount)}
+                      </TableCell>
+                      <TableCell className="text-right">{formatCurrency(runningBudget)}</TableCell>
+                      <TableCell>
+                        <form action={deleteChangeOrder}>
+                          <input type="hidden" name="changeOrderId" value={co.id} />
+                          <input type="hidden" name="mbaId" value={mba.id} />
+                          <Button type="submit" variant="ghost" size="sm" className="text-red-500 hover:text-red-700 h-6 w-6 p-0">
+                            &times;
+                          </Button>
+                        </form>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+
+          {/* Add Change Order Form */}
+          <div className="border-t pt-4">
+            <p className="text-sm font-medium mb-3">Add Change Order</p>
+            <form action={addChangeOrder} className="flex items-end gap-3">
+              <input type="hidden" name="mbaId" value={mba.id} />
+              <div className="space-y-1">
+                <Label htmlFor="co-amount" className="text-xs">Amount</Label>
+                <Input
+                  id="co-amount"
+                  name="amount"
+                  type="number"
+                  step="0.01"
+                  placeholder="25000 or -10000"
+                  required
+                  className="w-40"
+                />
+              </div>
+              <div className="space-y-1 flex-1">
+                <Label htmlFor="co-description" className="text-xs">Description</Label>
+                <Input
+                  id="co-description"
+                  name="description"
+                  placeholder="e.g., Q2 budget increase"
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="co-date" className="text-xs">Effective Date</Label>
+                <Input
+                  id="co-date"
+                  name="effectiveDate"
+                  type="date"
+                  defaultValue={today}
+                  required
+                  className="w-40"
+                />
+              </div>
+              <Button type="submit" size="sm">Add Change Order</Button>
+            </form>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Client Payment Tracking - what the client pays us */}
       <Card>
         <CardHeader>
@@ -465,7 +635,7 @@ export default async function MBADetailPage({
                   type="number"
                   step="0.01"
                   min="0"
-                  placeholder={budget.toString()}
+                  placeholder={effectiveBudget.toString()}
                   defaultValue={mba.clientPaidAmount ? Number(mba.clientPaidAmount).toString() : ""}
                 />
               </div>
@@ -473,10 +643,10 @@ export default async function MBADetailPage({
 
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
-                Budget: {formatCurrency(budget)}
-                {mba.clientPaidAmount && Number(mba.clientPaidAmount) !== budget && (
-                  <span className={Number(mba.clientPaidAmount) < budget ? " text-orange-600" : " text-green-600"}>
-                    {" "}(Variance: {formatCurrency(Number(mba.clientPaidAmount) - budget)})
+                Budget: {formatCurrency(effectiveBudget)}
+                {mba.clientPaidAmount && Number(mba.clientPaidAmount) !== effectiveBudget && (
+                  <span className={Number(mba.clientPaidAmount) < effectiveBudget ? " text-orange-600" : " text-green-600"}>
+                    {" "}(Variance: {formatCurrency(Number(mba.clientPaidAmount) - effectiveBudget)})
                   </span>
                 )}
               </p>
