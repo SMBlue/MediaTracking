@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CSVUpload } from "@/components/csv-upload";
 
 const PLATFORMS = [
   { value: "GOOGLE_ADS", label: "Google Ads" },
@@ -35,6 +36,12 @@ interface Allocation {
   amount: string;
 }
 
+interface LineItem {
+  campaignName: string;
+  amount: string;
+  platform: string;
+}
+
 export function NewInvoiceForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -47,6 +54,8 @@ export function NewInvoiceForm() {
   );
   const [totalAmount, setTotalAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [lineItems, setLineItems] = useState<LineItem[]>([]);
+  const [lineItemMode, setLineItemMode] = useState<"manual" | "csv">("manual");
 
   // Load MBAs on mount
   useEffect(() => {
@@ -66,6 +75,11 @@ export function NewInvoiceForm() {
   const invoiceTotal = parseFloat(totalAmount) || 0;
   const remaining = invoiceTotal - allocatedTotal;
 
+  const lineItemsTotal = lineItems.reduce(
+    (sum, item) => sum + (parseFloat(item.amount) || 0),
+    0
+  );
+
   const addAllocation = () => {
     setAllocations([...allocations, { mbaId: "", amount: "" }]);
   };
@@ -82,6 +96,35 @@ export function NewInvoiceForm() {
     const updated = [...allocations];
     updated[index][field] = value;
     setAllocations(updated);
+  };
+
+  const addLineItem = () => {
+    setLineItems([...lineItems, { campaignName: "", amount: "", platform: "" }]);
+  };
+
+  const removeLineItem = (index: number) => {
+    setLineItems(lineItems.filter((_, i) => i !== index));
+  };
+
+  const updateLineItem = (
+    index: number,
+    field: keyof LineItem,
+    value: string
+  ) => {
+    const updated = [...lineItems];
+    updated[index][field] = value;
+    setLineItems(updated);
+  };
+
+  const handleCSVImport = (items: { campaignName: string; amount: number; platform?: string }[]) => {
+    setLineItems(
+      items.map((item) => ({
+        campaignName: item.campaignName,
+        amount: item.amount.toString(),
+        platform: item.platform || "",
+      }))
+    );
+    setLineItemMode("manual");
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -108,6 +151,13 @@ export function NewInvoiceForm() {
             .map((a) => ({
               mbaId: a.mbaId,
               amount: parseFloat(a.amount),
+            })),
+          lineItems: lineItems
+            .filter((li) => li.campaignName || li.amount)
+            .map((li) => ({
+              campaignName: li.campaignName,
+              amount: parseFloat(li.amount) || 0,
+              platform: li.platform || undefined,
             })),
         }),
       });
@@ -227,6 +277,106 @@ export function NewInvoiceForm() {
               <Input id="notes" name="notes" placeholder="Any notes..." />
             </div>
 
+            {/* Line Items Section */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label>Line Items</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={lineItemMode === "manual" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setLineItemMode("manual")}
+                  >
+                    Manual
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={lineItemMode === "csv" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setLineItemMode("csv")}
+                  >
+                    Import CSV
+                  </Button>
+                </div>
+              </div>
+
+              {lineItemMode === "csv" ? (
+                <CSVUpload onImport={handleCSVImport} onCancel={() => setLineItemMode("manual")} />
+              ) : (
+                <>
+                  {lineItems.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No line items. Click &quot;+ Add Line Item&quot; to break down the invoice by campaign.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {lineItems.map((item, index) => (
+                        <div key={index} className="flex gap-2 items-end">
+                          <div className="flex-1">
+                            <Input
+                              placeholder="Campaign name"
+                              value={item.campaignName}
+                              onChange={(e) => updateLineItem(index, "campaignName", e.target.value)}
+                            />
+                          </div>
+                          <div className="w-28">
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              placeholder="Amount"
+                              value={item.amount}
+                              onChange={(e) => updateLineItem(index, "amount", e.target.value)}
+                            />
+                          </div>
+                          <div className="w-28">
+                            <Input
+                              placeholder="Platform"
+                              value={item.platform}
+                              onChange={(e) => updateLineItem(index, "platform", e.target.value)}
+                            />
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeLineItem(index)}
+                          >
+                            &times;
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <Button type="button" variant="outline" size="sm" onClick={addLineItem}>
+                    + Add Line Item
+                  </Button>
+
+                  {lineItems.length > 0 && (
+                    <div className="text-sm pt-2 border-t">
+                      <span>Line items total: ${lineItemsTotal.toFixed(2)}</span>
+                      {invoiceTotal > 0 && (
+                        <span
+                          className={`ml-2 ${
+                            Math.abs(lineItemsTotal - invoiceTotal) < 0.01
+                              ? "text-green-600"
+                              : "text-orange-600"
+                          }`}
+                        >
+                          {Math.abs(lineItemsTotal - invoiceTotal) < 0.01
+                            ? "— matches invoice total"
+                            : `— invoice total is $${invoiceTotal.toFixed(2)}`}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* MBA Allocations */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <Label>Allocate to MBAs</Label>

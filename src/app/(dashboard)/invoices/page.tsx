@@ -33,6 +33,7 @@ async function getInvoices() {
           },
         },
       },
+      _count: { select: { lineItems: true } },
     },
     orderBy: { invoiceDate: "desc" },
   });
@@ -156,6 +157,11 @@ export default async function InvoicesPage() {
                     <TableCell>{formatDate(invoice.invoiceDate)}</TableCell>
                     <TableCell className="text-right">
                       {formatCurrency(invoiceTotal)}
+                      {invoice._count.lineItems > 0 && (
+                        <span className="text-muted-foreground text-xs ml-1">
+                          {invoice._count.lineItems} items
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell>
                       {invoice.allocations.length === 0 ? (

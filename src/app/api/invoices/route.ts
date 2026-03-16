@@ -16,6 +16,7 @@ export async function POST(request: NextRequest) {
       isPaid,
       notes,
       allocations,
+      lineItems,
     } = body;
 
     // Validate required fields
@@ -49,6 +50,21 @@ export async function POST(request: NextRequest) {
               invoiceId: newInvoice.id,
               mbaId: alloc.mbaId,
               amount: alloc.amount,
+            })
+          ),
+        });
+      }
+
+      // Create line items if provided
+      if (lineItems && lineItems.length > 0) {
+        await tx.vendorInvoiceLineItem.createMany({
+          data: lineItems.map(
+            (item: { campaignName: string; amount: number; platform?: string; mbaId?: string }) => ({
+              invoiceId: newInvoice.id,
+              campaignName: item.campaignName,
+              amount: item.amount,
+              platform: item.platform || null,
+              mbaId: item.mbaId || null,
             })
           ),
         });

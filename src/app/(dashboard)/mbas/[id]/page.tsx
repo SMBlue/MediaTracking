@@ -44,7 +44,11 @@ async function getMBA(id: string) {
       },
       invoiceAllocations: {
         include: {
-          invoice: true,
+          invoice: {
+            include: {
+              _count: { select: { lineItems: true } },
+            },
+          },
         },
         orderBy: { createdAt: "desc" },
       },
@@ -1145,6 +1149,11 @@ export default async function MBADetailPage({
                       >
                         {alloc.invoice.invoiceNumber}
                       </Link>
+                      {alloc.invoice._count.lineItems > 0 && (
+                        <span className="ml-1 text-muted-foreground text-xs">
+                          {alloc.invoice._count.lineItems} items
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell>
                       {PLATFORMS.find((p) => p.value === alloc.invoice.vendor)
