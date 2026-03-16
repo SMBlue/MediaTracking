@@ -82,6 +82,13 @@ async function togglePaidStatus(formData: FormData) {
     },
   });
 
+  await logAudit({
+    entityType: "Invoice",
+    entityId: id,
+    action: "UPDATE",
+    changes: { isPaid: { old: currentStatus, new: !currentStatus } },
+  });
+
   redirect(`/invoices/${id}`);
 }
 
@@ -92,6 +99,12 @@ async function deleteInvoice(formData: FormData) {
 
   await prisma.invoice.delete({
     where: { id },
+  });
+
+  await logAudit({
+    entityType: "Invoice",
+    entityId: id,
+    action: "DELETE",
   });
 
   redirect("/invoices");

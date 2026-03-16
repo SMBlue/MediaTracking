@@ -56,10 +56,15 @@ Core models:
 - **SpendEntry** - Actual spend logged by platform/month
 - **Invoice** - Vendor invoice
 - **InvoiceAllocation** - Links invoices to MBAs (supports splitting)
+- **ChangeOrder** - Budget modifications to existing MBAs (positive or negative)
+- **CreditRollover** - Money transfers between MBAs (journal entry, credit memo, cash credit)
+- **VendorInvoiceLineItem** - Campaign-level line items on vendor invoices
+- **ReconciliationRecord** - Close-out workflow for finished MBAs
 
 Key calculation:
 ```
-MBA Remaining = MBA Budget - Sum(Invoice Allocations)
+Effective Budget = MBA Budget + Sum(Change Orders) + Sum(Credits In) - Sum(Credits Out)
+MBA Remaining = Effective Budget - Sum(Invoice Allocations)
 ```
 
 ## Environment Variables

@@ -36,11 +36,11 @@ All new models and field additions needed for Phase 2a.
 
 ### Tasks
 
-- [ ] **1.1** Add `netsuiteProjectNumber` field to MBA model
+- [x] **1.1** Add `netsuiteProjectNumber` field to MBA model
   - `netsuiteProjectNumber String?`
   - This is prep for F1 (NetSuite integration) but just a nullable string for now
 
-- [ ] **1.2** Add `ChangeOrder` model
+- [x] **1.2** Add `ChangeOrder` model
   ```prisma
   model ChangeOrder {
     id            String   @id @default(cuid())
@@ -57,7 +57,7 @@ All new models and field additions needed for Phase 2a.
   ```
   - Add `changeOrders ChangeOrder[]` relation to MBA model
 
-- [ ] **1.3** Add `CreditRollover` model
+- [x] **1.3** Add `CreditRollover` model
   ```prisma
   model CreditRollover {
     id          String       @id @default(cuid())
@@ -83,7 +83,7 @@ All new models and field additions needed for Phase 2a.
   - Add `creditsOut CreditRollover[] @relation("CreditsOut")` to MBA
   - Add `creditsIn CreditRollover[] @relation("CreditsIn")` to MBA
 
-- [ ] **1.4** Add `VendorInvoiceLineItem` model
+- [x] **1.4** Add `VendorInvoiceLineItem` model
   ```prisma
   model VendorInvoiceLineItem {
     id           String   @id @default(cuid())
@@ -101,7 +101,7 @@ All new models and field additions needed for Phase 2a.
   - Add `lineItems VendorInvoiceLineItem[]` to Invoice
   - Add `vendorLineItems VendorInvoiceLineItem[]` to MBA
 
-- [ ] **1.5** Add `ReconciliationRecord` model
+- [x] **1.5** Add `ReconciliationRecord` model
   ```prisma
   model ReconciliationRecord {
     id           String        @id @default(cuid())
@@ -134,7 +134,7 @@ All new models and field additions needed for Phase 2a.
   ```
   - Add `reconciliation ReconciliationRecord?` to MBA
 
-- [ ] **1.6** Add `RECONCILING` to MBAStatus enum
+- [x] **1.6** Add `RECONCILING` to MBAStatus enum
   ```prisma
   enum MBAStatus {
     DRAFT
@@ -144,21 +144,21 @@ All new models and field additions needed for Phase 2a.
   }
   ```
 
-- [ ] **1.7** Update `EntityType` in `src/lib/audit.ts`
+- [x] **1.7** Update `EntityType` in `src/lib/audit.ts`
   - Add: `"ChangeOrder" | "CreditRollover" | "ReconciliationRecord" | "VendorInvoiceLineItem"`
 
-- [ ] **1.8** Run `npx prisma@5 db push` to apply schema changes
-- [ ] **1.9** Run `npx prisma@5 generate` to regenerate client
-- [ ] **1.10** Run `npm run build` — expect type errors from `RECONCILING` status in existing code
+- [x] **1.8** Run `npx prisma@5 db push` to apply schema changes
+- [x] **1.9** Run `npx prisma@5 generate` to regenerate client
+- [x] **1.10** Run `npm run build` — expect type errors from `RECONCILING` status in existing code
 
 ### Schema verification & fixups
-- [ ] **1.11** Fix all references to MBAStatus that don't handle `RECONCILING`:
+- [x] **1.11** Fix all references to MBAStatus that don't handle `RECONCILING`:
   - `src/app/(dashboard)/mbas/page.tsx` — status badge rendering: add purple/blue style for RECONCILING
   - `src/app/(dashboard)/mbas/[id]/page.tsx` — status select dropdown: add RECONCILING option
   - `src/app/(dashboard)/mbas/[id]/page.tsx` — `updateMBAStatus` action: allow RECONCILING as valid input
   - `src/app/(dashboard)/mbas/new/page.tsx` — status select on create form: add RECONCILING option (though rarely used at creation)
-- [ ] **1.12** Run `npm run build` — must pass cleanly now
-- [ ] **1.13** Commit: "Add schema for change orders, rollovers, line items, and reconciliation"
+- [x] **1.12** Run `npm run build` — must pass cleanly now
+- [x] **1.13** Commit: "Add schema for change orders, rollovers, line items, and reconciliation"
 
 ---
 
@@ -170,7 +170,7 @@ Allow users to add/view change orders on an MBA, adjusting the effective budget.
 
 ### Tasks
 
-- [ ] **2.1** Create shared budget calculation helper `src/lib/budget.ts`
+- [x] **2.1** Create shared budget calculation helper `src/lib/budget.ts`
   ```ts
   export function calculateEffectiveBudget(mba: {
     budget: Decimal | number;
@@ -183,14 +183,14 @@ Allow users to add/view change orders on an MBA, adjusting the effective budget.
   - This centralizes the calculation so MBA detail, list, and dashboard all agree
   - Handle undefined arrays gracefully (treat as empty)
 
-- [ ] **2.2** Update MBA detail page data fetching (`src/app/(dashboard)/mbas/[id]/page.tsx`)
+- [x] **2.2** Update MBA detail page data fetching (`src/app/(dashboard)/mbas/[id]/page.tsx`)
   - In `getMBA()`, add to the include:
     ```ts
     changeOrders: { orderBy: { effectiveDate: "asc" } }
     ```
   - Note: ascending order for running total display
 
-- [ ] **2.3** Update budget calculation on MBA detail page
+- [x] **2.3** Update budget calculation on MBA detail page
   - Import and use `calculateEffectiveBudget()`
   - Replace raw `budget` with `effectiveBudget` in remaining/percent calculations
   - When change orders exist, show in the Budget card:
@@ -198,7 +198,7 @@ Allow users to add/view change orders on an MBA, adjusting the effective budget.
     - Line 2 (small, muted): "Original: $X" only when different from effective
   - Update all derived values: remaining, percentUsed, progress bar
 
-- [ ] **2.4** Add Change Orders section to MBA detail page
+- [x] **2.4** Add Change Orders section to MBA detail page
   - New Card between the progress bar and Client Payment sections
   - Header: "Change Orders" with a count badge
   - Table columns: Date | Description | Amount | Running Budget
@@ -207,7 +207,7 @@ Allow users to add/view change orders on an MBA, adjusting the effective budget.
   - Empty state: "No change orders" text
   - "Add Change Order" button in the card header (right side)
 
-- [ ] **2.5** Add inline form for creating a change order
+- [x] **2.5** Add inline form for creating a change order
   - Below the table, collapsible/inline form (always visible if simple, or behind "Add Change Order" toggle)
   - Fields:
     - Amount: number input (required, non-zero, can be negative)
@@ -215,7 +215,7 @@ Allow users to add/view change orders on an MBA, adjusting the effective budget.
     - Effective Date: date input (default: today)
   - Submit button: "Add Change Order"
 
-- [ ] **2.6** Create server action `addChangeOrder`
+- [x] **2.6** Create server action `addChangeOrder`
   - Location: `src/app/(dashboard)/mbas/[id]/page.tsx` (colocated with other actions)
   - Parse FormData: mbaId (hidden), amount, description, effectiveDate
   - Validation:
@@ -227,31 +227,31 @@ Allow users to add/view change orders on an MBA, adjusting the effective budget.
   - Audit: `logAudit({ entityType: "ChangeOrder", entityId: record.id, action: "CREATE" })`
   - `redirect(/mbas/${mbaId})`
 
-- [ ] **2.7** Add delete button per change order row
+- [x] **2.7** Add delete button per change order row
   - Small "x" or trash icon button per row
   - No confirmation dialog needed (audit log preserves history)
 
-- [ ] **2.8** Create server action `deleteChangeOrder`
+- [x] **2.8** Create server action `deleteChangeOrder`
   - Parse FormData: changeOrderId, mbaId (for redirect)
   - Fetch the record first (to capture amount/description for audit)
   - Delete by ID
   - Audit: `logAudit({ entityType: "ChangeOrder", entityId: id, action: "DELETE", changes: { amount: { old: X, new: null }, description: { old: "...", new: null } } })`
   - `redirect(/mbas/${mbaId})`
 
-- [ ] **2.9** Update MBA list page (`src/app/(dashboard)/mbas/page.tsx`)
+- [x] **2.9** Update MBA list page (`src/app/(dashboard)/mbas/page.tsx`)
   - Add `changeOrders: true` to the include in `getMBAs()`
   - Import `calculateEffectiveBudget` from `@/lib/budget`
   - Use it for the budget column: `const budget = calculateEffectiveBudget(mba)`
   - Update the totals reduce to use effective budget
   - No visual changes needed beyond the number being correct
 
-- [ ] **2.10** Update dashboard (`src/app/(dashboard)/page.tsx`)
+- [x] **2.10** Update dashboard (`src/app/(dashboard)/page.tsx`)
   - Add `changeOrders: true` to the include in `getDashboardStats()`
   - Import `calculateEffectiveBudget`
   - Replace `Number(mba.budget)` with `calculateEffectiveBudget(mba)` in totalBudget calc
   - Update remaining, outstanding from clients, etc.
 
-- [ ] **2.11** Run `npm run build` — verify clean
+- [x] **2.11** Run `npm run build` — verify clean
 
 ### Testing: Change Orders
 
@@ -273,7 +273,7 @@ Allow users to add/view change orders on an MBA, adjusting the effective budget.
   - Submit with empty description → rejected
   - Submit with all valid data → success
 - [ ] **2.T8** **No regression**: MBA with zero change orders displays exactly as before (Budget card shows just "Budget", not "Effective Budget")
-- [ ] **2.T9** Commit: "Add change order support to MBAs"
+- [x] **2.T9** Commit: "Add change order support to MBAs"
 
 ---
 
@@ -286,7 +286,7 @@ Track money moving from one MBA to another.
 
 ### Tasks
 
-- [ ] **3.1** Update MBA detail page query to include rollover data
+- [x] **3.1** Update MBA detail page query to include rollover data
   - In `getMBA()`, add to include:
     ```ts
     creditsOut: {
@@ -299,7 +299,7 @@ Track money moving from one MBA to another.
     }
     ```
 
-- [ ] **3.2** Add "Credits & Rollovers" section to MBA detail page
+- [x] **3.2** Add "Credits & Rollovers" section to MBA detail page
   - New Card section after Change Orders
   - Two subsections with headers:
     - **Credits Received** (creditsIn): money coming in from other MBAs
@@ -309,7 +309,7 @@ Track money moving from one MBA to another.
   - Subtotals for each direction
   - Empty state per direction: "No credits received" / "No credits sent"
 
-- [ ] **3.3** Add "Transfer Credit" form on MBA detail page
+- [x] **3.3** Add "Transfer Credit" form on MBA detail page
   - Located in the Credits & Rollovers card
   - Fields:
     - **Direction**: "Send FROM this MBA" or "Receive INTO this MBA" (radio/toggle)
@@ -323,7 +323,7 @@ Track money moving from one MBA to another.
   - Submit button: "Transfer Credit"
   - Need to fetch list of other MBAs for the dropdown — use a data-fetching function
 
-- [ ] **3.4** Create server action `createRollover`
+- [x] **3.4** Create server action `createRollover`
   - Parse FormData: direction, otherMbaId, amount, type, description, currentMbaId
   - Determine fromMbaId/toMbaId based on direction
   - Validation:
@@ -338,32 +338,32 @@ Track money moving from one MBA to another.
     3. `entityType: "MBA", entityId: toMbaId, action: "UPDATE"` with changes noting the credit in
   - `redirect(/mbas/${currentMbaId})`
 
-- [ ] **3.5** Update `calculateEffectiveBudget()` in `src/lib/budget.ts`
+- [x] **3.5** Update `calculateEffectiveBudget()` in `src/lib/budget.ts`
   - Should already handle creditsIn/creditsOut from the initial implementation in 2.1
   - Verify: `effectiveBudget = Number(budget) + sum(changeOrders) + sum(creditsIn) - sum(creditsOut)`
 
-- [ ] **3.6** Update MBA detail page budget display to show rollover breakdown
+- [x] **3.6** Update MBA detail page budget display to show rollover breakdown
   - When rollovers exist, the Budget card subtitle expands:
     - "Original: $100,000 + Change Orders: $25,000 + Credits In: $90,000 − Credits Out: $0"
     - Only show non-zero items
   - Keep it concise — one line of small text, not a separate card
 
-- [ ] **3.7** Update MBA list page query to include rollovers
+- [x] **3.7** Update MBA list page query to include rollovers
   - Add `creditsIn: true, creditsOut: true` to include in `getMBAs()`
   - `calculateEffectiveBudget()` already handles them
 
-- [ ] **3.8** Update dashboard query to include rollovers
+- [x] **3.8** Update dashboard query to include rollovers
   - Add `creditsIn: true, creditsOut: true` to include in `getDashboardStats()`
   - Budget calculation already uses `calculateEffectiveBudget()`
 
-- [ ] **3.9** Create server action `deleteRollover`
+- [x] **3.9** Create server action `deleteRollover`
   - Parse FormData: rolloverId, currentMbaId (for redirect)
   - Fetch the record (to get fromMbaId, toMbaId, amount for audit)
   - Delete the record
   - Audit: log DELETE on the CreditRollover, and UPDATE on both MBAs
   - `redirect(/mbas/${currentMbaId})`
 
-- [ ] **3.10** Run `npm run build` — verify clean
+- [x] **3.10** Run `npm run build` — verify clean
 
 ### Testing: Rollovers
 
@@ -391,7 +391,7 @@ Track money moving from one MBA to another.
 - [ ] **3.T6** **Cross-client rollover**: Select an MBA from a different client → should work
 - [ ] **3.T7** **Receive direction**: Use "Receive INTO this MBA" direction → fromMbaId is the other MBA, toMbaId is current
 - [ ] **3.T8** **List page and dashboard**: Budget columns and totals reflect rollovers correctly
-- [ ] **3.T9** Commit: "Add credit/rollover tracking between MBAs"
+- [x] **3.T9** Commit: "Add credit/rollover tracking between MBAs"
 
 ---
 
@@ -401,27 +401,27 @@ Simple field addition — enables future NetSuite linking.
 
 ### Tasks
 
-- [ ] **4.1** Update MBA create form (`src/app/(dashboard)/mbas/new/page.tsx`)
+- [x] **4.1** Update MBA create form (`src/app/(dashboard)/mbas/new/page.tsx`)
   - Add optional text input after the Status select
   - Label: "NetSuite Project #"
   - Placeholder: "e.g., 4504"
   - Name: "netsuiteProjectNumber"
 
-- [ ] **4.2** Update `createMBA` server action to save `netsuiteProjectNumber`
+- [x] **4.2** Update `createMBA` server action to save `netsuiteProjectNumber`
   - Read from FormData, save as string or null if empty
 
-- [ ] **4.3** Add editable NetSuite Project # on MBA detail page
+- [x] **4.3** Add editable NetSuite Project # on MBA detail page
   - Small inline form near the page header (below client name / dates line)
   - Display: "NS Project: 4504" or "NS Project: Not set"
   - Click to edit: text input + Save button
   - Server action `updateNetsuiteProject(formData)` — update the field, audit log
 
-- [ ] **4.4** Show NetSuite Project # on MBA list page
+- [x] **4.4** Show NetSuite Project # on MBA list page
   - New narrow column after "Name", header: "NS #"
   - Show value or "–" if not set
   - Small/muted text to not take too much space
 
-- [ ] **4.5** Run `npm run build` — verify clean
+- [x] **4.5** Run `npm run build` — verify clean
 
 ### Testing: NetSuite Project Number
 
@@ -430,7 +430,7 @@ Simple field addition — enables future NetSuite linking.
 - [ ] **4.T3** Create MBA without NS# → shows "–" on list, "Not set" on detail
 - [ ] **4.T4** Edit: set NS# on existing MBA → saves and displays
 - [ ] **4.T5** Edit: clear NS# (set to empty) → returns to "Not set"
-- [ ] **4.T6** Commit: "Add NetSuite project number field to MBAs"
+- [x] **4.T6** Commit: "Add NetSuite project number field to MBAs"
 
 ---
 
@@ -442,7 +442,7 @@ Break invoices into campaign-level line items. Add CSV upload as an ingestion me
 
 ### Tasks
 
-- [ ] **5.1** Update invoice creation form (`src/app/(dashboard)/invoices/new/form.tsx`)
+- [x] **5.1** Update invoice creation form (`src/app/(dashboard)/invoices/new/form.tsx`)
   - This is a `"use client"` component — add state management for line items
   - Add "Line Items" section between Notes and MBA Allocations
   - Each line item row: campaignName (text input), amount (number input), platform (text input, optional)
@@ -452,7 +452,7 @@ Break invoices into campaign-level line items. Add CSV upload as an ingestion me
     - "Line items total ($45,000) doesn't match invoice total ($50,000)"
   - Green text when they match: "Line items match invoice total"
 
-- [ ] **5.2** Update `POST /api/invoices` route (`src/app/api/invoices/route.ts`)
+- [x] **5.2** Update `POST /api/invoices` route (`src/app/api/invoices/route.ts`)
   - Accept optional `lineItems` array in request body:
     ```ts
     lineItems?: { campaignName: string; amount: number; platform?: string; mbaId?: string }[]
@@ -461,7 +461,7 @@ Break invoices into campaign-level line items. Add CSV upload as an ingestion me
   - Backwards compatible: if lineItems is absent or empty, works exactly as before
   - Update the form's `handleSubmit` to include lineItems in the JSON body
 
-- [ ] **5.3** Update invoice detail page (`src/app/(dashboard)/invoices/[id]/page.tsx`)
+- [x] **5.3** Update invoice detail page (`src/app/(dashboard)/invoices/[id]/page.tsx`)
   - Add `lineItems: { include: { mba: { include: { client: true } } }, orderBy: { createdAt: "asc" } }` to the invoice query
   - New "Line Items" Card section:
     - Table: Campaign Name | Platform | Amount | MBA Assignment
@@ -470,13 +470,13 @@ Break invoices into campaign-level line items. Add CSV upload as an ingestion me
   - Totals: sum of line items vs invoice total (with match/mismatch indicator)
   - Empty state: "No line items recorded for this invoice"
 
-- [ ] **5.4** Create server action `updateLineItemMBA` (in invoice detail page)
+- [x] **5.4** Create server action `updateLineItemMBA` (in invoice detail page)
   - Takes: lineItemId, mbaId (or empty string to unmap)
   - Updates `VendorInvoiceLineItem.mbaId`
   - Audit: log UPDATE on VendorInvoiceLineItem
   - Redirect back to invoice page
 
-- [ ] **5.5** Create CSV upload component (`src/components/csv-upload.tsx`)
+- [x] **5.5** Create CSV upload component (`src/components/csv-upload.tsx`)
   - `"use client"` component
   - Props: `onImport: (lineItems: { campaignName: string; amount: number; platform?: string }[]) => void`
   - UI:
@@ -495,13 +495,13 @@ Break invoices into campaign-level line items. Add CSV upload as an ingestion me
     - "Cancel" button → dismisses
   - CSV parsing: handle quoted values, trim whitespace, skip empty rows
 
-- [ ] **5.6** Integrate CSV upload into invoice form
+- [x] **5.6** Integrate CSV upload into invoice form
   - Add toggle at top of Line Items section: "Manual" | "Import CSV"
   - When "Import CSV" selected: show CSVUpload component
   - On import: switch to "Manual" mode, populate lineItems state with parsed data
   - User can then edit any line item in the form before saving
 
-- [ ] **5.7** Update MBA detail page vendor invoices table
+- [x] **5.7** Update MBA detail page vendor invoices table
   - Add `lineItems: true` to the invoice include in `getMBA()` (nested through invoiceAllocations → invoice)
   - For invoices with line items:
     - Show line item count as a small badge: "3 items"
@@ -509,11 +509,11 @@ Break invoices into campaign-level line items. Add CSV upload as an ingestion me
     - Expanded view: mini-table with campaign name, platform, amount
   - Invoices without line items: no badge, no expand
 
-- [ ] **5.8** Update invoice list page (`src/app/(dashboard)/invoices/page.tsx`)
+- [x] **5.8** Update invoice list page (`src/app/(dashboard)/invoices/page.tsx`)
   - Add `_count: { select: { lineItems: true } }` or include lineItems to the query
   - Show line item count per invoice row as subtle text: "3 items"
 
-- [ ] **5.9** Run `npm run build` — verify clean
+- [x] **5.9** Run `npm run build` — verify clean
 
 ### Testing: Invoice Line Items & CSV Upload
 
@@ -565,7 +565,7 @@ Break invoices into campaign-level line items. Add CSV upload as an ingestion me
   - Expanded view shows campaign breakdown
   - Invoice without line items has no badge and no expand
 - [ ] **5.T10** **Invoice list page**: Line item count visible per invoice
-- [ ] **5.T11** Commit: "Add vendor invoice line items and CSV upload"
+- [x] **5.T11** Commit: "Add vendor invoice line items and CSV upload"
 
 ---
 
@@ -577,17 +577,17 @@ Structured close-out process for finished MBAs.
 
 ### Tasks
 
-- [ ] **6.1** Update MBA detail page query to include reconciliation
+- [x] **6.1** Update MBA detail page query to include reconciliation
   - Add `reconciliation: true` to the include in `getMBA()`
 
-- [ ] **6.2** Add "Start Reconciliation" button on MBA detail page
+- [x] **6.2** Add "Start Reconciliation" button on MBA detail page
   - Conditions for visibility:
     - MBA status is ACTIVE
     - No ReconciliationRecord exists for this MBA
   - Button location: near the status controls at the top, or as a distinct action
   - Text: "Start Reconciliation"
 
-- [ ] **6.3** Create server action `startReconciliation`
+- [x] **6.3** Create server action `startReconciliation`
   - Create ReconciliationRecord:
     - status: PENDING
     - finalBalance: calculated as effectiveBudget - totalInvoiced (snapshot at start)
@@ -595,7 +595,7 @@ Structured close-out process for finished MBAs.
   - Audit: CREATE on ReconciliationRecord, UPDATE (status) on MBA
   - Redirect back
 
-- [ ] **6.4** Create reconciliation panel on MBA detail page
+- [x] **6.4** Create reconciliation panel on MBA detail page
   - Shows when `mba.reconciliation` exists
   - Styled distinctly (e.g., border-l-4 with purple/blue accent color)
   - **Header**: "Reconciliation" + status badge (PENDING: yellow, IN_REVIEW: blue, CONFIRMED: green, CLOSED: gray)
@@ -614,7 +614,7 @@ Structured close-out process for finished MBAs.
     - CONFIRMED → "Close MBA" button
     - CLOSED → no action buttons (display "Reconciliation complete" message)
 
-- [ ] **6.5** Create server actions for reconciliation
+- [x] **6.5** Create server actions for reconciliation
   - `updateReconciliation(formData)`:
     - Updates: outcome, notes, finalBalance
     - Does NOT change status (that's done by specific transition actions)
@@ -627,7 +627,7 @@ Structured close-out process for finished MBAs.
     - Validate: don't allow skipping steps or going backwards
     - Audit: UPDATE on ReconciliationRecord, and on MBA when status changes
 
-- [ ] **6.6** Handle ROLLOVER outcome after confirmation
+- [x] **6.6** Handle ROLLOVER outcome after confirmation
   - When recon status = CONFIRMED and outcome = ROLLOVER:
     - Show prominent "Create Rollover" button/banner
     - Text: "This MBA has $X remaining. Transfer to another MBA?"
@@ -636,28 +636,28 @@ Structured close-out process for finished MBAs.
       - Amount: finalBalance value
     - After rollover is created, user returns to close the reconciliation
 
-- [ ] **6.7** Handle REFUND outcome
+- [x] **6.7** Handle REFUND outcome
   - When outcome = REFUND:
     - Show refund amount (= finalBalance)
     - Notes field serves as the place to record refund details
     - No system integration — purely informational
 
-- [ ] **6.8** Handle CLOSED_ZERO outcome
+- [x] **6.8** Handle CLOSED_ZERO outcome
   - When outcome = CLOSED_ZERO:
     - Simple — no rollover or refund prompts
     - Just confirm and close
 
-- [ ] **6.9** Add "Needs Reconciliation" indicator to MBA list page
+- [x] **6.9** Add "Needs Reconciliation" indicator to MBA list page
   - Calculate: ACTIVE MBAs where `endDate < (today - 60 days)`
   - Show count at top of list page: "N MBAs may need reconciliation" (info banner, clickable)
   - Optional: add a filter that shows only these MBAs
 
-- [ ] **6.10** Dashboard: add "Needs Reconciliation" card
+- [x] **6.10** Dashboard: add "Needs Reconciliation" card
   - New card in the overview section (or modify existing stats grid)
   - Count of ACTIVE MBAs past end date by 60+ days
   - Clickable → navigates to MBA list (ideally filtered)
 
-- [ ] **6.11** Run `npm run build` — verify clean
+- [x] **6.11** Run `npm run build` — verify clean
 
 ### Testing: Reconciliation
 
@@ -706,7 +706,7 @@ Structured close-out process for finished MBAs.
   - Days since campaign ended: matches reality
   - Vendor invoice count: matches actual invoices allocated to this MBA
   - Final balance: matches effectiveBudget - totalInvoiced
-- [ ] **6.T12** Commit: "Add reconciliation workflow for MBA close-out"
+- [x] **6.T12** Commit: "Add reconciliation workflow for MBA close-out"
 
 ---
 
@@ -825,31 +825,31 @@ For each test below, the process is:
 
 ### Code quality audit
 
-- [ ] **7.7** `npm run build` — final production build, zero errors
-- [ ] **7.8** Grep verification — all new pages have `export const dynamic = "force-dynamic"`:
+- [x] **7.7** `npm run build` — final production build, zero errors
+- [x] **7.8** Grep verification — all new pages have `export const dynamic = "force-dynamic"`:
   ```bash
   grep -rL "force-dynamic" src/app/\(dashboard\)/ --include="page.tsx"
   ```
   Any page files listed here are MISSING the directive — fix them.
-- [ ] **7.9** Grep verification — all server actions have audit logging:
+- [x] **7.9** Grep verification — all server actions have audit logging:
   ```bash
   grep -A 20 '"use server"' src/app/\(dashboard\)/ --include="*.tsx" | grep -c "logAudit"
   ```
   Count of logAudit calls should roughly match count of server actions.
-- [ ] **7.10** No leftover debug code:
+- [x] **7.10** No leftover debug code:
   ```bash
   grep -rn "console.log\|TODO\|FIXME\|HACK\|XXX" src/ --include="*.tsx" --include="*.ts"
   ```
   Review any results — remove debug logs, address TODOs or document them.
-- [ ] **7.11** Decimal handling: verify all new Decimal fields use `Number()` for display, not `.toString()` (which preserves trailing zeros)
-- [ ] **7.12** Update `CLAUDE.md` with:
+- [x] **7.11** Decimal handling: verify all new Decimal fields use `Number()` for display, not `.toString()` (which preserves trailing zeros)
+- [x] **7.12** Update `CLAUDE.md` with:
   - New models added to schema
   - New lib file: `src/lib/budget.ts`
   - New component: `src/components/csv-upload.tsx`
   - Updated entity types for audit logging
-- [ ] **7.13** Stop dev server, clean up any test data created during QA
+- [x] **7.13** Stop dev server, clean up any test data created during QA
 
-- [ ] **7.14** Final commit: "Phase 2a complete — change orders, rollovers, line items, reconciliation"
+- [x] **7.14** Final commit: "Phase 2a complete — change orders, rollovers, line items, reconciliation"
 
 ---
 

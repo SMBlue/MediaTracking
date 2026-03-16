@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { prisma } from "@/lib/db";
+import { logAudit } from "@/lib/audit";
 
 async function createClient(formData: FormData) {
   "use server";
@@ -14,10 +15,16 @@ async function createClient(formData: FormData) {
     throw new Error("Client name is required");
   }
 
-  await prisma.client.create({
+  const client = await prisma.client.create({
     data: {
       name: name.trim(),
     },
+  });
+
+  await logAudit({
+    entityType: "Client",
+    entityId: client.id,
+    action: "CREATE",
   });
 
   redirect("/mbas");

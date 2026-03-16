@@ -15,6 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { prisma } from "@/lib/db";
+import { logAudit } from "@/lib/audit";
 
 async function getClient(id: string) {
   const client = await prisma.client.findUnique({
@@ -43,10 +44,20 @@ async function updateClient(formData: FormData) {
     throw new Error("Client name is required");
   }
 
+  const existing = await prisma.client.findUnique({ where: { id } });
   await prisma.client.update({
     where: { id },
     data: { name: name.trim() },
   });
+
+  if (existing && existing.name !== name.trim()) {
+    await logAudit({
+      entityType: "Client",
+      entityId: id,
+      action: "UPDATE",
+      changes: { name: { old: existing.name, new: name.trim() } },
+    });
+  }
 
   redirect(`/mbas?client=${id}`);
 }
@@ -58,6 +69,12 @@ async function deleteClient(formData: FormData) {
 
   await prisma.client.delete({
     where: { id },
+  });
+
+  await logAudit({
+    entityType: "Client",
+    entityId: id,
+    action: "DELETE",
   });
 
   redirect("/mbas");

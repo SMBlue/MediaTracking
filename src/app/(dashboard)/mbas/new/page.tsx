@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { prisma } from "@/lib/db";
+import { logAudit } from "@/lib/audit";
 
 async function getClients() {
   return prisma.client.findMany({
@@ -59,7 +60,7 @@ async function createMBA(formData: FormData) {
   });
   const mbaNumber = `MBA-${year}-${String(count + 1).padStart(3, "0")}`;
 
-  await prisma.mBA.create({
+  const mba = await prisma.mBA.create({
     data: {
       clientId,
       mbaNumber,
@@ -71,6 +72,12 @@ async function createMBA(formData: FormData) {
       status,
       netsuiteProjectNumber,
     },
+  });
+
+  await logAudit({
+    entityType: "MBA",
+    entityId: mba.id,
+    action: "CREATE",
   });
 
   redirect("/mbas");
