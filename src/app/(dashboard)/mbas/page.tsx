@@ -62,6 +62,12 @@ export default async function MBAsPage({
     ? clients.find((c) => c.id === clientId)
     : null;
 
+  // MBAs that may need reconciliation (active, end date 60+ days ago)
+  const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
+  const needsReconCount = mbas.filter(
+    (mba) => mba.status === "ACTIVE" && new Date(mba.endDate) < sixtyDaysAgo
+  ).length;
+
   // Calculate totals
   const totals = mbas.reduce(
     (acc, mba) => {
@@ -123,6 +129,14 @@ export default async function MBAsPage({
           </Button>
         )}
       </div>
+
+      {needsReconCount > 0 && (
+        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+          <p className="text-purple-800">
+            <strong>{needsReconCount}</strong> MBA{needsReconCount > 1 ? "s" : ""} may need reconciliation (ended 60+ days ago)
+          </p>
+        </div>
+      )}
 
       {mbas.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">

@@ -63,6 +63,7 @@ async function getMBA(id: string) {
         include: { fromMba: { include: { client: true } } },
         orderBy: { createdAt: "desc" },
       },
+      reconciliation: true,
     },
   });
 
@@ -360,6 +361,128 @@ async function deleteRollover(formData: FormData) {
   redirect(`/mbas/${currentMbaId}`);
 }
 
+async function startReconciliation(formData: FormData) {
+  "use server";
+
+  const mbaId = formData.get("mbaId") as string;
+  const finalBalance = parseFloat(formData.get("finalBalance") as string);
+
+  const mba = await prisma.mBA.findUnique({ where: { id: mbaId } });
+  if (!mba) throw new Error("MBA not found");
+
+  const record = await prisma.reconciliationRecord.create({
+    data: {
+      mbaId,
+      status: "PENDING",
+      finalBalance,
+    },
+  });
+
+  await prisma.mBA.update({
+    where: { id: mbaId },
+    data: { status: "RECONCILING" },
+  });
+
+  await Promise.all([
+    logAudit({ entityType: "ReconciliationRecord", entityId: record.id, action: "CREATE" }),
+    logAudit({
+      entityType: "MBA",
+      entityId: mbaId,
+      action: "UPDATE",
+      changes: { status: { old: mba.status, new: "RECONCILING" } },
+    }),
+  ]);
+
+  redirect(`/mbas/${mbaId}`);
+}
+
+async function updateReconciliation(formData: FormData) {
+  "use server";
+
+  const reconId = formData.get("reconId") as string;
+  const mbaId = formData.get("mbaId") as string;
+  const outcome = (formData.get("outcome") as string) || null;
+  const notes = (formData.get("notes") as string) || null;
+
+  await prisma.reconciliationRecord.update({
+    where: { id: reconId },
+    data: {
+      outcome: outcome as "REFUND" | "ROLLOVER" | "CLOSED_ZERO" | null,
+      notes,
+    },
+  });
+
+  await logAudit({
+    entityType: "ReconciliationRecord",
+    entityId: reconId,
+    action: "UPDATE",
+    changes: { outcome: { old: null, new: outcome }, notes: { old: null, new: notes } },
+  });
+
+  redirect(`/mbas/${mbaId}`);
+}
+
+async function advanceReconciliation(formData: FormData) {
+  "use server";
+
+  const reconId = formData.get("reconId") as string;
+  const mbaId = formData.get("mbaId") as string;
+  const currentStatus = formData.get("currentStatus") as string;
+
+  const recon = await prisma.reconciliationRecord.findUnique({ where: { id: reconId } });
+  if (!recon) throw new Error("Reconciliation not found");
+
+  if (currentStatus === "PENDING") {
+    await prisma.reconciliationRecord.update({
+      where: { id: reconId },
+      data: { status: "IN_REVIEW" },
+    });
+    await logAudit({
+      entityType: "ReconciliationRecord",
+      entityId: reconId,
+      action: "UPDATE",
+      changes: { status: { old: "PENDING", new: "IN_REVIEW" } },
+    });
+  } else if (currentStatus === "IN_REVIEW") {
+    if (!recon.outcome) throw new Error("Outcome must be set before confirming");
+    await prisma.reconciliationRecord.update({
+      where: { id: reconId },
+      data: { status: "CONFIRMED", confirmedAt: new Date() },
+    });
+    await logAudit({
+      entityType: "ReconciliationRecord",
+      entityId: reconId,
+      action: "UPDATE",
+      changes: { status: { old: "IN_REVIEW", new: "CONFIRMED" } },
+    });
+  } else if (currentStatus === "CONFIRMED") {
+    await prisma.reconciliationRecord.update({
+      where: { id: reconId },
+      data: { status: "CLOSED" },
+    });
+    await prisma.mBA.update({
+      where: { id: mbaId },
+      data: { status: "CLOSED" },
+    });
+    await Promise.all([
+      logAudit({
+        entityType: "ReconciliationRecord",
+        entityId: reconId,
+        action: "UPDATE",
+        changes: { status: { old: "CONFIRMED", new: "CLOSED" } },
+      }),
+      logAudit({
+        entityType: "MBA",
+        entityId: mbaId,
+        action: "UPDATE",
+        changes: { status: { old: "RECONCILING", new: "CLOSED" } },
+      }),
+    ]);
+  }
+
+  redirect(`/mbas/${mbaId}`);
+}
+
 async function updateNetsuiteProject(formData: FormData) {
   "use server";
 
@@ -531,6 +654,15 @@ export default async function MBADetailPage({
               Update
             </Button>
           </form>
+          {mba.status === "ACTIVE" && !mba.reconciliation && (
+            <form action={startReconciliation}>
+              <input type="hidden" name="mbaId" value={mba.id} />
+              <input type="hidden" name="finalBalance" value={remaining.toString()} />
+              <Button type="submit" variant="outline" size="sm">
+                Start Reconciliation
+              </Button>
+            </form>
+          )}
         </div>
       </div>
 
@@ -646,6 +778,156 @@ export default async function MBADetailPage({
           </div>
         </CardContent>
       </Card>
+
+      {/* Reconciliation Panel */}
+      {mba.reconciliation && (
+        <Card className="border-l-4 border-l-purple-500">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span>Reconciliation</span>
+              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                mba.reconciliation.status === "PENDING" ? "bg-yellow-100 text-yellow-700" :
+                mba.reconciliation.status === "IN_REVIEW" ? "bg-blue-100 text-blue-700" :
+                mba.reconciliation.status === "CONFIRMED" ? "bg-green-100 text-green-700" :
+                "bg-gray-100 text-gray-700"
+              }`}>
+                {mba.reconciliation.status.replace("_", " ")}
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Summary info */}
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-muted-foreground">Campaign End Date:</span>{" "}
+                {formatDate(mba.endDate)}
+                {(() => {
+                  const daysSinceEnd = Math.floor((Date.now() - new Date(mba.endDate).getTime()) / (1000 * 60 * 60 * 24));
+                  return daysSinceEnd > 0 ? (
+                    <span className="text-muted-foreground ml-1">({daysSinceEnd} days ago)</span>
+                  ) : null;
+                })()}
+              </div>
+              <div>
+                <span className="text-muted-foreground">Final Balance:</span>{" "}
+                <span className="font-medium">{formatCurrency(Number(mba.reconciliation.finalBalance || 0))}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Vendor Invoices:</span>{" "}
+                {mba.invoiceAllocations.length}
+              </div>
+            </div>
+
+            {/* Outcome selector + notes (editable when PENDING or IN_REVIEW) */}
+            {(mba.reconciliation.status === "PENDING" || mba.reconciliation.status === "IN_REVIEW") && (
+              <form action={updateReconciliation} className="space-y-3">
+                <input type="hidden" name="reconId" value={mba.reconciliation.id} />
+                <input type="hidden" name="mbaId" value={mba.id} />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="recon-outcome" className="text-xs">Outcome</Label>
+                    <Select name="outcome" defaultValue={mba.reconciliation.outcome || ""}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select outcome..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ROLLOVER">Roll over to next MBA</SelectItem>
+                        <SelectItem value="REFUND">Refund client</SelectItem>
+                        <SelectItem value="CLOSED_ZERO">Close (zero balance)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="recon-notes" className="text-xs">Notes</Label>
+                    <Input
+                      id="recon-notes"
+                      name="notes"
+                      defaultValue={mba.reconciliation.notes || ""}
+                      placeholder="Reconciliation notes..."
+                    />
+                  </div>
+                </div>
+                <Button type="submit" size="sm" variant="outline">Save Changes</Button>
+              </form>
+            )}
+
+            {/* Show outcome and notes when CONFIRMED or CLOSED */}
+            {(mba.reconciliation.status === "CONFIRMED" || mba.reconciliation.status === "CLOSED") && (
+              <div className="text-sm space-y-1">
+                {mba.reconciliation.outcome && (
+                  <p>
+                    <span className="text-muted-foreground">Outcome:</span>{" "}
+                    <span className="font-medium">
+                      {mba.reconciliation.outcome === "ROLLOVER" ? "Roll over to next MBA" :
+                       mba.reconciliation.outcome === "REFUND" ? "Refund client" :
+                       "Close (zero balance)"}
+                    </span>
+                  </p>
+                )}
+                {mba.reconciliation.notes && (
+                  <p>
+                    <span className="text-muted-foreground">Notes:</span>{" "}
+                    {mba.reconciliation.notes}
+                  </p>
+                )}
+                {mba.reconciliation.confirmedAt && (
+                  <p>
+                    <span className="text-muted-foreground">Confirmed:</span>{" "}
+                    {formatDate(mba.reconciliation.confirmedAt)}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* ROLLOVER prompt when confirmed */}
+            {mba.reconciliation.status === "CONFIRMED" && mba.reconciliation.outcome === "ROLLOVER" && (
+              <div className="bg-purple-50 border border-purple-200 rounded p-3">
+                <p className="text-sm text-purple-800">
+                  This MBA has <strong>{formatCurrency(Number(mba.reconciliation.finalBalance || 0))}</strong> remaining.
+                  Transfer to another MBA?
+                </p>
+                <p className="text-xs text-purple-600 mt-1">
+                  Use the Credits &amp; Rollovers section below to create the transfer, then return here to close.
+                </p>
+              </div>
+            )}
+
+            {/* REFUND info */}
+            {mba.reconciliation.status === "CONFIRMED" && mba.reconciliation.outcome === "REFUND" && (
+              <div className="bg-blue-50 border border-blue-200 rounded p-3">
+                <p className="text-sm text-blue-800">
+                  Refund amount: <strong>{formatCurrency(Number(mba.reconciliation.finalBalance || 0))}</strong>
+                </p>
+                <p className="text-xs text-blue-600 mt-1">Record refund details in the notes field.</p>
+              </div>
+            )}
+
+            {/* Action buttons */}
+            {mba.reconciliation.status !== "CLOSED" && (
+              <form action={advanceReconciliation}>
+                <input type="hidden" name="reconId" value={mba.reconciliation.id} />
+                <input type="hidden" name="mbaId" value={mba.id} />
+                <input type="hidden" name="currentStatus" value={mba.reconciliation.status} />
+                {mba.reconciliation.status === "PENDING" && (
+                  <Button type="submit" size="sm">Mark In Review</Button>
+                )}
+                {mba.reconciliation.status === "IN_REVIEW" && (
+                  <Button type="submit" size="sm" disabled={!mba.reconciliation.outcome}>
+                    Confirm Reconciliation
+                  </Button>
+                )}
+                {mba.reconciliation.status === "CONFIRMED" && (
+                  <Button type="submit" size="sm" variant="destructive">Close MBA</Button>
+                )}
+              </form>
+            )}
+
+            {mba.reconciliation.status === "CLOSED" && (
+              <p className="text-sm text-green-600 font-medium">Reconciliation complete</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Change Orders */}
       <Card>

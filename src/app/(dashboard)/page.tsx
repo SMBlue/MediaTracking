@@ -50,6 +50,12 @@ async function getDashboardStats() {
     0
   );
 
+  // Needs reconciliation: active MBAs past end date by 60+ days
+  const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
+  const needsReconCount = activeMBAs.filter(
+    (mba) => new Date(mba.endDate) < sixtyDaysAgo
+  ).length;
+
   // Client payment stats
   const clientPaidCount = activeMBAs.filter((mba) => mba.clientPaid).length;
   const totalClientPaid = activeMBAs
@@ -71,6 +77,7 @@ async function getDashboardStats() {
     clientPaidCount,
     totalClientPaid,
     totalOutstanding,
+    needsReconCount,
   };
 }
 
@@ -227,6 +234,17 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {stats.needsReconCount > 0 && (
+        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+          <p className="text-purple-800">
+            <strong>{stats.needsReconCount}</strong> active MBA{stats.needsReconCount > 1 ? "s" : ""} may need reconciliation (ended 60+ days ago)
+          </p>
+          <Button asChild variant="link" className="p-0 h-auto text-purple-700">
+            <Link href="/mbas">View MBAs</Link>
+          </Button>
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
