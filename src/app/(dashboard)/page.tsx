@@ -6,6 +6,17 @@ import { Button } from "@/components/ui/button";
 import { prisma } from "@/lib/db";
 import { calculateEffectiveBudget } from "@/lib/budget";
 
+async function getNetsuiteSyncStatus() {
+  try {
+    const lastSync = await prisma.netsuiteSyncLog.findFirst({
+      orderBy: { startedAt: "desc" },
+    });
+    return { lastSync };
+  } catch {
+    return { lastSync: null };
+  }
+}
+
 async function getEmailIngestionStatus() {
   try {
     const lastSync = await prisma.emailSyncLog.findFirst({
@@ -103,9 +114,10 @@ function formatCurrency(amount: number) {
 }
 
 export default async function DashboardPage() {
-  const [stats, emailStatus] = await Promise.all([
+  const [stats, emailStatus, netsuiteStatus] = await Promise.all([
     getDashboardStats(),
     getEmailIngestionStatus(),
+    getNetsuiteSyncStatus(),
   ]);
 
   return (
@@ -302,6 +314,44 @@ export default async function DashboardPage() {
                     "None"
                   )}
                 </p>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* NetSuite Sync Status */}
+      <Card>
+        <CardHeader>
+          <CardTitle>NetSuite Sync</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!netsuiteStatus.lastSync ? (
+            <div className="text-sm text-muted-foreground">
+              <p>NetSuite sync has not run yet.</p>
+              <p className="mt-1">
+                Set MBA NetSuite project numbers to enable automatic invoice and payment syncing.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-4 gap-4 text-sm">
+              <div>
+                <p className="text-muted-foreground">Last Sync</p>
+                <p className="font-medium">
+                  {new Date(netsuiteStatus.lastSync.startedAt).toLocaleString()}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">MBAs Checked</p>
+                <p className="font-medium">{netsuiteStatus.lastSync.mbasChecked}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Payments Updated</p>
+                <p className="font-medium">{netsuiteStatus.lastSync.paymentsUpdated}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Rollovers Found</p>
+                <p className="font-medium">{netsuiteStatus.lastSync.rolloversCreated}</p>
               </div>
             </div>
           )}

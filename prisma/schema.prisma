@@ -97,6 +97,7 @@ model MBA {
   creditsIn           CreditRollover[]    @relation("CreditsIn")
   vendorLineItems     VendorInvoiceLineItem[]
   reconciliation      ReconciliationRecord?
+  netsuiteInvoices    NetsuiteClientInvoice[]
 }
 
 enum MBAStatus {
@@ -293,4 +294,34 @@ model EmailSyncLog {
   status          String   @default("RUNNING") // RUNNING, COMPLETED, FAILED
 
   @@index([startedAt])
+}
+
+model NetsuiteSyncLog {
+  id              String   @id @default(cuid())
+  startedAt       DateTime @default(now())
+  completedAt     DateTime?
+  mbasChecked     Int      @default(0)
+  paymentsUpdated Int      @default(0)
+  rolloversCreated Int     @default(0)
+  errors          String?
+  status          String   @default("RUNNING") // RUNNING, COMPLETED, FAILED
+
+  @@index([startedAt])
+}
+
+model NetsuiteClientInvoice {
+  id                String   @id @default(cuid())
+  mbaId             String
+  netsuiteId        String   @unique // NS internal transaction ID for dedup
+  invoiceNumber     String
+  invoiceDate       DateTime @db.Date
+  amount            Decimal  @db.Decimal(15, 2)
+  status            String   // Open, Paid In Full, etc.
+  paidDate          DateTime? @db.Date
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  mba MBA @relation(fields: [mbaId], references: [id], onDelete: Cascade)
+
+  @@index([mbaId])
 }

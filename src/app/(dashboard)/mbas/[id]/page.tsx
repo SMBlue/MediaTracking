@@ -24,6 +24,7 @@ import {
 import { prisma } from "@/lib/db";
 import { logAudit, computeChanges } from "@/lib/audit";
 import { calculateEffectiveBudget } from "@/lib/budget";
+import { MBAHeader } from "@/components/mba-header";
 
 const PLATFORMS = [
   { value: "GOOGLE_ADS", label: "Google Ads" },
@@ -64,6 +65,9 @@ async function getMBA(id: string) {
         orderBy: { createdAt: "desc" },
       },
       reconciliation: true,
+      netsuiteInvoices: {
+        orderBy: { invoiceDate: "desc" },
+      },
     },
   });
 
@@ -483,6 +487,68 @@ async function advanceReconciliation(formData: FormData) {
   redirect(`/mbas/${mbaId}`);
 }
 
+async function updateMBA(formData: FormData) {
+  "use server";
+
+  const id = formData.get("id") as string;
+  const name = (formData.get("name") as string)?.trim();
+  const budget = parseFloat(formData.get("budget") as string);
+  const currency = formData.get("currency") as string;
+  const startDate = formData.get("startDate") as string;
+  const endDate = formData.get("endDate") as string;
+  const clientId = formData.get("clientId") as string;
+
+  if (!id || !name || isNaN(budget) || !startDate || !endDate || !clientId) {
+    throw new Error("All fields are required");
+  }
+
+  const existing = await prisma.mBA.findUnique({ where: { id } });
+  if (!existing) throw new Error("MBA not found");
+
+  const updated = await prisma.mBA.update({
+    where: { id },
+    data: {
+      name,
+      budget,
+      currency,
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
+      clientId,
+    },
+  });
+
+  const changes = computeChanges(
+    {
+      name: existing.name,
+      budget: Number(existing.budget),
+      currency: existing.currency,
+      startDate: existing.startDate.toISOString(),
+      endDate: existing.endDate.toISOString(),
+      clientId: existing.clientId,
+    },
+    {
+      name: updated.name,
+      budget: Number(updated.budget),
+      currency: updated.currency,
+      startDate: updated.startDate.toISOString(),
+      endDate: updated.endDate.toISOString(),
+      clientId: updated.clientId,
+    },
+    ["name", "budget", "currency", "startDate", "endDate", "clientId"]
+  );
+
+  if (changes) {
+    await logAudit({
+      entityType: "MBA",
+      entityId: id,
+      action: "UPDATE",
+      changes,
+    });
+  }
+
+  redirect(`/mbas/${id}`);
+}
+
 async function updateNetsuiteProject(formData: FormData) {
   "use server";
 
@@ -555,7 +621,11 @@ export default async function MBADetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [mba, otherMBAs] = await Promise.all([getMBA(id), getOtherMBAs(id)]);
+  const [mba, otherMBAs, allClients] = await Promise.all([
+    getMBA(id),
+    getOtherMBAs(id),
+    prisma.client.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+  ]);
 
   const originalBudget = Number(mba.budget);
   const effectiveBudget = calculateEffectiveBudget(mba);
@@ -596,75 +666,31 @@ export default async function MBADetailPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-3xl font-bold">{mba.mbaNumber}</h1>
-            <span
-              className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                mba.status === "ACTIVE"
-                  ? "bg-green-100 text-green-700"
-                  : mba.status === "CLOSED"
-                  ? "bg-gray-100 text-gray-700"
-                  : mba.status === "RECONCILING"
-                  ? "bg-purple-100 text-purple-700"
-                  : "bg-yellow-100 text-yellow-700"
-              }`}
-            >
-              {mba.status}
-            </span>
-          </div>
-          <p className="text-muted-foreground">
-            {mba.client.name} &middot; {mba.name}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            {formatDate(mba.startDate)} - {formatDate(mba.endDate)}
-          </p>
-          <div className="flex items-center gap-2 mt-1">
-            <form action={updateNetsuiteProject} className="flex items-center gap-1">
-              <input type="hidden" name="id" value={mba.id} />
-              <span className="text-xs text-muted-foreground">NS Project:</span>
-              <Input
-                name="netsuiteProjectNumber"
-                defaultValue={mba.netsuiteProjectNumber || ""}
-                placeholder="Not set"
-                className="h-6 w-24 text-xs"
-              />
-              <Button type="submit" variant="ghost" size="sm" className="h-6 text-xs px-2">
-                Save
-              </Button>
-            </form>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <form action={updateMBAStatus}>
-            <input type="hidden" name="id" value={mba.id} />
-            <Select name="status" defaultValue={mba.status}>
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="DRAFT">Draft</SelectItem>
-                <SelectItem value="ACTIVE">Active</SelectItem>
-                <SelectItem value="RECONCILING">Reconciling</SelectItem>
-                <SelectItem value="CLOSED">Closed</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button type="submit" variant="outline" size="sm" className="ml-2">
-              Update
-            </Button>
-          </form>
-          {mba.status === "ACTIVE" && !mba.reconciliation && (
-            <form action={startReconciliation}>
-              <input type="hidden" name="mbaId" value={mba.id} />
-              <input type="hidden" name="finalBalance" value={remaining.toString()} />
-              <Button type="submit" variant="outline" size="sm">
-                Start Reconciliation
-              </Button>
-            </form>
-          )}
-        </div>
-      </div>
+      <MBAHeader
+        mba={{
+          id: mba.id,
+          mbaNumber: mba.mbaNumber,
+          name: mba.name,
+          budget: Number(mba.budget),
+          currency: mba.currency,
+          startDate: formatDateForInput(mba.startDate),
+          endDate: formatDateForInput(mba.endDate),
+          status: mba.status,
+          netsuiteProjectNumber: mba.netsuiteProjectNumber,
+          clientId: mba.clientId,
+          clientName: mba.client.name,
+        }}
+        clients={allClients}
+        updateMBA={updateMBA}
+        updateMBAStatus={updateMBAStatus}
+        updateNetsuiteProject={updateNetsuiteProject}
+        startReconciliation={
+          mba.status === "ACTIVE" && !mba.reconciliation
+            ? startReconciliation
+            : null
+        }
+        remaining={remaining}
+      />
 
       {/* Budget Summary */}
       <div className="grid gap-4 md:grid-cols-4">
@@ -1218,6 +1244,64 @@ export default async function MBADetailPage({
           </div>
         </CardContent>
       </Card>
+
+      {/* NetSuite Client Invoices */}
+      {mba.netsuiteInvoices.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              NetSuite Client Invoices
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                {mba.netsuiteInvoices.length}
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Invoice #</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {mba.netsuiteInvoices.map((inv) => (
+                  <TableRow key={inv.id}>
+                    <TableCell className="font-medium">{inv.invoiceNumber}</TableCell>
+                    <TableCell>{formatDate(inv.invoiceDate)}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(Number(inv.amount))}</TableCell>
+                    <TableCell>
+                      {inv.status === "paidInFull" ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                          Paid
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
+                          {inv.status === "open" ? "Open" : inv.status}
+                        </span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                <TableRow className="font-bold">
+                  <TableCell colSpan={2}>Total</TableCell>
+                  <TableCell className="text-right">
+                    {formatCurrency(
+                      mba.netsuiteInvoices.reduce((sum, inv) => sum + Number(inv.amount), 0)
+                    )}
+                  </TableCell>
+                  <TableCell></TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+            <p className="text-xs text-muted-foreground mt-2">
+              Synced from NetSuite project {mba.netsuiteProjectNumber}
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Client Payment Tracking - what the client pays us */}
       <Card>
