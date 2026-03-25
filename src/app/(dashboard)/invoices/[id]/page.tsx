@@ -1,16 +1,9 @@
 export const dynamic = "force-dynamic";
 
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -20,7 +13,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { prisma } from "@/lib/db";
-import { logAudit } from "@/lib/audit";
+import { LineItemAssignments } from "@/components/line-item-assignments";
+import {
+  togglePaidStatus,
+  deleteInvoice,
+  confirmDraft,
+  discardDraft,
+} from "./actions";
 
 const PLATFORMS = [
   { value: "GOOGLE_ADS", label: "Google Ads" },
@@ -68,98 +67,6 @@ async function getActiveMBAs() {
   });
 }
 
-async function togglePaidStatus(formData: FormData) {
-  "use server";
-
-  const id = formData.get("id") as string;
-  const currentStatus = formData.get("currentStatus") === "true";
-
-  await prisma.invoice.update({
-    where: { id },
-    data: {
-      isPaid: !currentStatus,
-      paidDate: !currentStatus ? new Date() : null,
-    },
-  });
-
-  await logAudit({
-    entityType: "Invoice",
-    entityId: id,
-    action: "UPDATE",
-    changes: { isPaid: { old: currentStatus, new: !currentStatus } },
-  });
-
-  redirect(`/invoices/${id}`);
-}
-
-async function deleteInvoice(formData: FormData) {
-  "use server";
-
-  const id = formData.get("id") as string;
-
-  await prisma.invoice.delete({
-    where: { id },
-  });
-
-  await logAudit({
-    entityType: "Invoice",
-    entityId: id,
-    action: "DELETE",
-  });
-
-  redirect("/invoices");
-}
-
-async function confirmDraft(formData: FormData) {
-  "use server";
-  const id = formData.get("id") as string;
-  await prisma.invoice.update({
-    where: { id },
-    data: { status: "CONFIRMED" },
-  });
-  await logAudit({
-    entityType: "Invoice",
-    entityId: id,
-    action: "UPDATE",
-    changes: { status: { old: "DRAFT", new: "CONFIRMED" } },
-  });
-  redirect(`/invoices/${id}`);
-}
-
-async function discardDraft(formData: FormData) {
-  "use server";
-  const id = formData.get("id") as string;
-  await prisma.invoice.delete({ where: { id } });
-  await logAudit({
-    entityType: "Invoice",
-    entityId: id,
-    action: "DELETE",
-  });
-  redirect("/invoices/drafts");
-}
-
-async function updateLineItemMBA(formData: FormData) {
-  "use server";
-
-  const lineItemId = formData.get("lineItemId") as string;
-  const mbaId = (formData.get("mbaId") as string) || null;
-  const invoiceId = formData.get("invoiceId") as string;
-
-  await prisma.vendorInvoiceLineItem.update({
-    where: { id: lineItemId },
-    data: { mbaId: mbaId === "__unmap__" ? null : mbaId },
-  });
-
-  await logAudit({
-    entityType: "VendorInvoiceLineItem",
-    entityId: lineItemId,
-    action: "UPDATE",
-    changes: { mbaId: { old: null, new: mbaId } },
-  });
-
-  redirect(`/invoices/${invoiceId}`);
-}
-
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -191,11 +98,6 @@ export default async function InvoiceDetailPage({
     0
   );
   const unallocated = totalAmount - allocatedTotal;
-
-  const lineItemsTotal = invoice.lineItems.reduce(
-    (sum, item) => sum + Number(item.amount),
-    0
-  );
 
   function confidenceBadge(confidence: number | null) {
     if (confidence === null) return null;
@@ -346,67 +248,25 @@ export default async function InvoiceDetailPage({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {invoice.lineItems.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              No line items recorded for this invoice
-            </p>
-          ) : (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Campaign Name</TableHead>
-                    <TableHead>Platform</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    {invoice.status === "DRAFT" && <TableHead>Confidence</TableHead>}
-                    <TableHead>MBA Assignment</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {invoice.lineItems.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-medium">{item.campaignName}</TableCell>
-                      <TableCell>{item.platform || "–"}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(Number(item.amount))}</TableCell>
-                      {invoice.status === "DRAFT" && (
-                        <TableCell>{confidenceBadge(item.confidence)}</TableCell>
-                      )}
-                      <TableCell>
-                        <form action={updateLineItemMBA} className="flex items-center gap-1">
-                          <input type="hidden" name="lineItemId" value={item.id} />
-                          <input type="hidden" name="invoiceId" value={invoice.id} />
-                          <Select name="mbaId" defaultValue={item.mbaId || "__unmap__"}>
-                            <SelectTrigger className="w-52 h-8 text-xs">
-                              <SelectValue placeholder="Unmapped" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="__unmap__">Unmapped</SelectItem>
-                              {activeMBAs.map((mba) => (
-                                <SelectItem key={mba.id} value={mba.id}>
-                                  {mba.client.name} - {mba.mbaNumber}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Button type="submit" variant="ghost" size="sm" className="h-8 text-xs px-2">
-                            Save
-                          </Button>
-                        </form>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              <div className="flex justify-between text-sm pt-2 border-t mt-2">
-                <span>Line items total: {formatCurrency(lineItemsTotal)}</span>
-                <span className={Math.abs(lineItemsTotal - totalAmount) < 0.01 ? "text-green-600" : "text-orange-600"}>
-                  {Math.abs(lineItemsTotal - totalAmount) < 0.01
-                    ? "Matches invoice total"
-                    : `Invoice total: ${formatCurrency(totalAmount)}`}
-                </span>
-              </div>
-            </>
-          )}
+          <LineItemAssignments
+            invoiceId={invoice.id}
+            lineItems={invoice.lineItems.map((item) => ({
+              id: item.id,
+              campaignName: item.campaignName,
+              platform: item.platform,
+              amount: Number(item.amount),
+              mbaId: item.mbaId,
+              confidence: item.confidence,
+            }))}
+            activeMBAs={activeMBAs.map((mba) => ({
+              id: mba.id,
+              mbaNumber: mba.mbaNumber,
+              name: mba.name,
+              client: { name: mba.client.name },
+            }))}
+            isDraft={invoice.status === "DRAFT"}
+            totalAmount={totalAmount}
+          />
         </CardContent>
       </Card>
 

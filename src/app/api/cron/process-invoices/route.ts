@@ -12,6 +12,7 @@ import {
   analyzeEmailWithClaude,
 } from "@/lib/pdf-parser";
 import { matchClient, mapPlatform } from "@/lib/invoice-matching";
+import { matchLineItemsToMBAs } from "@/lib/mba-matching";
 
 export const dynamic = "force-dynamic";
 
@@ -142,15 +143,30 @@ export async function GET(request: NextRequest) {
         const matchedClient = await matchClient(parsed.clientName);
 
         // Coerce line item amounts
-        const lineItems = (parsed.lineItems || [])
+        const parsedLineItems = (parsed.lineItems || [])
           .filter((item) => item.campaignName)
           .map((item) => ({
             campaignName: String(item.campaignName),
             platform: item.platform ? String(item.platform) : null,
             amount: Number(item.amount) || 0,
             confidence: Number(item.confidence) || 0,
-            mbaId: undefined as string | undefined,
           }));
+
+        // Auto-match line items to MBAs
+        const matchedLineItems = await matchLineItemsToMBAs(
+          parsedLineItems,
+          matchedClient?.id || null,
+          mapPlatform(parsed.platform),
+          invoiceDate
+        );
+
+        const lineItems = matchedLineItems.map((item) => ({
+          campaignName: item.campaignName,
+          platform: item.platform,
+          amount: item.amount,
+          confidence: item.confidence,
+          mbaId: item.mbaId || undefined,
+        }));
 
         const invoice = await prisma.invoice.create({
           data: {
