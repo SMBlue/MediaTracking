@@ -26,28 +26,28 @@ export function Nav({ draftCount = 0 }: { draftCount?: number }) {
   };
 
   return (
-    <nav className="border-b bg-background">
+    <nav className="bg-bs-midnight border-b border-bs-medium-blue">
       <div className="container mx-auto px-4">
-        <div className="flex h-16 items-center justify-between">
+        <div className="flex h-14 items-center justify-between">
           <div className="flex items-center gap-8">
-            <Link href="/" className="font-bold text-xl">
+            <Link href="/" className="font-bold text-lg text-white tracking-tight">
               MBA Tracker
             </Link>
-            <div className="flex gap-6">
+            <div className="flex gap-1">
               {navItems.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "text-sm font-medium transition-colors hover:text-primary relative",
+                    "text-sm font-medium px-3 py-1.5 rounded-md transition-colors duration-150 relative",
                     pathname === item.href
-                      ? "text-foreground"
-                      : "text-muted-foreground"
+                      ? "bg-bs-cobalt text-white"
+                      : "text-bs-lavender/80 hover:text-white hover:bg-bs-medium-blue"
                   )}
                 >
                   {item.label}
                   {item.href === "/invoices" && draftCount > 0 && (
-                    <span className="absolute -top-2 -right-4 inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold text-white bg-purple-600 rounded-full">
+                    <span className="absolute -top-1.5 -right-2 inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold text-white bg-bs-coral rounded-full">
                       {draftCount}
                     </span>
                   )}
@@ -55,7 +55,12 @@ export function Nav({ draftCount = 0 }: { draftCount?: number }) {
               ))}
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={handleSignOut}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleSignOut}
+            className="text-bs-lavender/70 hover:text-white hover:bg-bs-medium-blue"
+          >
             Sign out
           </Button>
         </div>

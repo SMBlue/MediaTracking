@@ -81,7 +81,7 @@ export function AddClientModal({ children }: AddClientModalProps) {
                 placeholder="e.g., Acme Corporation"
                 disabled={submitting}
               />
-              {error && <p className="text-sm text-red-600">{error}</p>}
+              {error && <p className="text-sm text-bs-coral">{error}</p>}
             </div>
           </div>
 

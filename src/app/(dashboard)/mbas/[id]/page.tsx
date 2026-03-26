@@ -701,7 +701,7 @@ export default async function MBADetailPage({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatCurrency(effectiveBudget)}</p>
+            <p className="text-2xl font-bold tabular-nums">{formatCurrency(effectiveBudget)}</p>
             {(hasChangeOrders || hasRollovers) && (
               <p className="text-xs text-muted-foreground">
                 {[
@@ -722,11 +722,11 @@ export default async function MBADetailPage({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatCurrency(totalInvoiced)}</p>
+            <p className="text-2xl font-bold tabular-nums">{formatCurrency(totalInvoiced)}</p>
             <p className="text-xs text-muted-foreground">
               {Math.round(percentUsed)}% of budget (owed to platforms)
               {creditTotal > 0 && (
-                <span className="text-blue-600 block">
+                <span className="text-bs-cobalt block">
                   ({formatCurrency(invoiceTotal)} - {formatCurrency(creditTotal)} credits)
                 </span>
               )}
@@ -742,8 +742,8 @@ export default async function MBADetailPage({
           </CardHeader>
           <CardContent>
             <p
-              className={`text-2xl font-bold ${
-                remaining < 0 ? "text-red-600" : ""
+              className={`text-2xl font-bold tabular-nums ${
+                remaining < 0 ? "text-bs-coral" : ""
               }`}
             >
               {formatCurrency(remaining)}
@@ -759,11 +759,11 @@ export default async function MBADetailPage({
           </CardHeader>
           <CardContent>
             <p
-              className={`text-2xl font-bold ${
+              className={`text-2xl font-bold tabular-nums ${
                 variance !== 0
                   ? variance > 0
-                    ? "text-orange-600"
-                    : "text-blue-600"
+                    ? "text-bs-coral"
+                    : "text-bs-cobalt"
                   : ""
               }`}
             >
@@ -789,14 +789,14 @@ export default async function MBADetailPage({
               <span>Budget Utilization</span>
               <span>{Math.round(percentUsed)}%</span>
             </div>
-            <div className="h-4 bg-gray-200 rounded-full overflow-hidden">
+            <div className="h-4 bg-bs-lavender rounded-full overflow-hidden">
               <div
-                className={`h-full transition-all ${
+                className={`h-full transition-all duration-500 ease-out ${
                   percentUsed > 100
-                    ? "bg-red-500"
+                    ? "bg-bs-coral"
                     : percentUsed > 80
-                    ? "bg-yellow-500"
-                    : "bg-green-500"
+                    ? "bg-bs-yellow"
+                    : "bg-bs-teal"
                 }`}
                 style={{ width: `${Math.min(percentUsed, 100)}%` }}
               />
@@ -807,15 +807,15 @@ export default async function MBADetailPage({
 
       {/* Reconciliation Panel */}
       {mba.reconciliation && (
-        <Card className="border-l-4 border-l-purple-500">
+        <Card className="border-l-4 border-l-bs-cobalt">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span>Reconciliation</span>
               <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                mba.reconciliation.status === "PENDING" ? "bg-yellow-100 text-yellow-700" :
-                mba.reconciliation.status === "IN_REVIEW" ? "bg-blue-100 text-blue-700" :
-                mba.reconciliation.status === "CONFIRMED" ? "bg-green-100 text-green-700" :
-                "bg-gray-100 text-gray-700"
+                mba.reconciliation.status === "PENDING" ? "bg-bs-yellow text-bs-dark-gray" :
+                mba.reconciliation.status === "IN_REVIEW" ? "bg-bs-cobalt/10 text-bs-cobalt" :
+                mba.reconciliation.status === "CONFIRMED" ? "bg-bs-teal/20 text-bs-teal-dark" :
+                "bg-bs-dark-gray/10 text-bs-dark-gray"
               }`}>
                 {mba.reconciliation.status.replace("_", " ")}
               </span>
@@ -907,12 +907,12 @@ export default async function MBADetailPage({
 
             {/* ROLLOVER prompt when confirmed */}
             {mba.reconciliation.status === "CONFIRMED" && mba.reconciliation.outcome === "ROLLOVER" && (
-              <div className="bg-purple-50 border border-purple-200 rounded p-3">
-                <p className="text-sm text-purple-800">
+              <div className="bg-bs-light-blue border border-bs-cobalt/20 rounded p-3">
+                <p className="text-sm text-bs-midnight">
                   This MBA has <strong>{formatCurrency(Number(mba.reconciliation.finalBalance || 0))}</strong> remaining.
                   Transfer to another MBA?
                 </p>
-                <p className="text-xs text-purple-600 mt-1">
+                <p className="text-xs text-bs-cobalt mt-1">
                   Use the Credits &amp; Rollovers section below to create the transfer, then return here to close.
                 </p>
               </div>
@@ -920,11 +920,11 @@ export default async function MBADetailPage({
 
             {/* REFUND info */}
             {mba.reconciliation.status === "CONFIRMED" && mba.reconciliation.outcome === "REFUND" && (
-              <div className="bg-blue-50 border border-blue-200 rounded p-3">
-                <p className="text-sm text-blue-800">
+              <div className="bg-bs-light-blue border border-bs-cobalt/20 rounded p-3">
+                <p className="text-sm text-bs-midnight">
                   Refund amount: <strong>{formatCurrency(Number(mba.reconciliation.finalBalance || 0))}</strong>
                 </p>
-                <p className="text-xs text-blue-600 mt-1">Record refund details in the notes field.</p>
+                <p className="text-xs text-bs-cobalt mt-1">Record refund details in the notes field.</p>
               </div>
             )}
 
@@ -949,7 +949,7 @@ export default async function MBADetailPage({
             )}
 
             {mba.reconciliation.status === "CLOSED" && (
-              <p className="text-sm text-green-600 font-medium">Reconciliation complete</p>
+              <p className="text-sm text-bs-teal-dark font-medium">Reconciliation complete</p>
             )}
           </CardContent>
         </Card>
@@ -961,7 +961,7 @@ export default async function MBADetailPage({
           <CardTitle className="flex items-center gap-2">
             Change Orders
             {mba.changeOrders.length > 0 && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-bs-dark-gray/10 text-bs-dark-gray">
                 {mba.changeOrders.length}
               </span>
             )}
@@ -989,7 +989,7 @@ export default async function MBADetailPage({
                     <TableRow key={co.id}>
                       <TableCell>{formatDate(co.effectiveDate)}</TableCell>
                       <TableCell>{co.description}</TableCell>
-                      <TableCell className={`text-right font-medium ${coAmount >= 0 ? "text-green-600" : "text-red-600"}`}>
+                      <TableCell className={`text-right font-medium tabular-nums ${coAmount >= 0 ? "text-bs-teal-dark" : "text-bs-coral"}`}>
                         {coAmount >= 0 ? "+" : ""}{formatCurrency(coAmount)}
                       </TableCell>
                       <TableCell className="text-right">{formatCurrency(runningBudget)}</TableCell>
@@ -997,7 +997,7 @@ export default async function MBADetailPage({
                         <form action={deleteChangeOrder}>
                           <input type="hidden" name="changeOrderId" value={co.id} />
                           <input type="hidden" name="mbaId" value={mba.id} />
-                          <Button type="submit" variant="ghost" size="sm" className="text-red-500 hover:text-red-700 h-6 w-6 p-0">
+                          <Button type="submit" variant="ghost" size="sm" className="text-bs-coral hover:text-bs-coral-dark h-6 w-6 p-0">
                             &times;
                           </Button>
                         </form>
@@ -1086,11 +1086,11 @@ export default async function MBADetailPage({
                           </Link>
                         </TableCell>
                         <TableCell>{cr.fromMba.client.name}</TableCell>
-                        <TableCell className="text-right text-green-600 font-medium">
+                        <TableCell className="text-right text-bs-teal-dark font-medium tabular-nums">
                           +{formatCurrency(Number(cr.amount))}
                         </TableCell>
                         <TableCell>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-bs-dark-gray/10 text-bs-dark-gray">
                             {ROLLOVER_TYPE_LABELS[cr.type] || cr.type}
                           </span>
                         </TableCell>
@@ -1100,7 +1100,7 @@ export default async function MBADetailPage({
                           <form action={deleteRollover}>
                             <input type="hidden" name="rolloverId" value={cr.id} />
                             <input type="hidden" name="currentMbaId" value={mba.id} />
-                            <Button type="submit" variant="ghost" size="sm" className="text-red-500 hover:text-red-700 h-6 w-6 p-0">
+                            <Button type="submit" variant="ghost" size="sm" className="text-bs-coral hover:text-bs-coral-dark h-6 w-6 p-0">
                               &times;
                             </Button>
                           </form>
@@ -1144,11 +1144,11 @@ export default async function MBADetailPage({
                           </Link>
                         </TableCell>
                         <TableCell>{cr.toMba.client.name}</TableCell>
-                        <TableCell className="text-right text-red-600 font-medium">
+                        <TableCell className="text-right text-bs-coral font-medium tabular-nums">
                           -{formatCurrency(Number(cr.amount))}
                         </TableCell>
                         <TableCell>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-bs-dark-gray/10 text-bs-dark-gray">
                             {ROLLOVER_TYPE_LABELS[cr.type] || cr.type}
                           </span>
                         </TableCell>
@@ -1158,7 +1158,7 @@ export default async function MBADetailPage({
                           <form action={deleteRollover}>
                             <input type="hidden" name="rolloverId" value={cr.id} />
                             <input type="hidden" name="currentMbaId" value={mba.id} />
-                            <Button type="submit" variant="ghost" size="sm" className="text-red-500 hover:text-red-700 h-6 w-6 p-0">
+                            <Button type="submit" variant="ghost" size="sm" className="text-bs-coral hover:text-bs-coral-dark h-6 w-6 p-0">
                               &times;
                             </Button>
                           </form>
@@ -1251,7 +1251,7 @@ export default async function MBADetailPage({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               NetSuite Client Invoices
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-bs-dark-gray/10 text-bs-dark-gray">
                 {mba.netsuiteInvoices.length}
               </span>
             </CardTitle>
@@ -1274,11 +1274,11 @@ export default async function MBADetailPage({
                     <TableCell className="text-right">{formatCurrency(Number(inv.amount))}</TableCell>
                     <TableCell>
                       {inv.status === "paidInFull" ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-bs-teal/20 text-bs-teal-dark">
                           Paid
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-bs-coral/15 text-bs-coral-dark">
                           {inv.status === "open" ? "Open" : inv.status}
                         </span>
                       )}
@@ -1309,11 +1309,11 @@ export default async function MBADetailPage({
           <CardTitle className="flex items-center justify-between">
             <span>Client Payment (to Agency)</span>
             {mba.clientPaid ? (
-              <span className="text-sm font-normal px-2 py-1 bg-green-100 text-green-700 rounded-full">
+              <span className="text-sm font-normal px-2 py-1 bg-bs-teal/20 text-bs-teal-dark rounded-full">
                 Received
               </span>
             ) : (
-              <span className="text-sm font-normal px-2 py-1 bg-orange-100 text-orange-700 rounded-full">
+              <span className="text-sm font-normal px-2 py-1 bg-bs-coral/15 text-bs-coral-dark rounded-full">
                 Outstanding
               </span>
             )}
@@ -1365,7 +1365,7 @@ export default async function MBADetailPage({
               <p className="text-sm text-muted-foreground">
                 Budget: {formatCurrency(effectiveBudget)}
                 {mba.clientPaidAmount && Number(mba.clientPaidAmount) !== effectiveBudget && (
-                  <span className={Number(mba.clientPaidAmount) < effectiveBudget ? " text-orange-600" : " text-green-600"}>
+                  <span className={Number(mba.clientPaidAmount) < effectiveBudget ? " text-bs-coral" : " text-bs-teal-dark"}>
                     {" "}(Variance: {formatCurrency(Number(mba.clientPaidAmount) - effectiveBudget)})
                   </span>
                 )}
@@ -1499,11 +1499,11 @@ export default async function MBADetailPage({
                   <TableRow key={alloc.id}>
                     <TableCell>
                       {alloc.invoice.type === "CREDIT_NOTE" ? (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-bs-cobalt/10 text-bs-cobalt">
                           Credit
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-bs-dark-gray/10 text-bs-dark-gray">
                           Invoice
                         </span>
                       )}
@@ -1526,15 +1526,15 @@ export default async function MBADetailPage({
                         ?.label || alloc.invoice.vendor}
                     </TableCell>
                     <TableCell>{formatDate(alloc.invoice.invoiceDate)}</TableCell>
-                    <TableCell className={`text-right ${alloc.invoice.type === "CREDIT_NOTE" ? "text-blue-600" : ""}`}>
+                    <TableCell className={`text-right tabular-nums ${alloc.invoice.type === "CREDIT_NOTE" ? "text-bs-cobalt" : ""}`}>
                       {alloc.invoice.type === "CREDIT_NOTE" ? "-" : ""}
                       {formatCurrency(Number(alloc.amount))}
                     </TableCell>
                     <TableCell>
                       {alloc.invoice.isPaid ? (
-                        <span className="text-green-600">Paid</span>
+                        <span className="text-bs-teal-dark">Paid</span>
                       ) : (
-                        <span className="text-orange-600">Unpaid</span>
+                        <span className="text-bs-coral">Unpaid</span>
                       )}
                     </TableCell>
                   </TableRow>

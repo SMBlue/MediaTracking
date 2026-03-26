@@ -43,10 +43,10 @@ function formatDate(date: string) {
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  ACTIVE: "bg-green-100 text-green-700",
-  CLOSED: "bg-gray-100 text-gray-700",
-  RECONCILING: "bg-purple-100 text-purple-700",
-  DRAFT: "bg-yellow-100 text-yellow-700",
+  ACTIVE: "bg-bs-teal/20 text-bs-teal-dark",
+  CLOSED: "bg-bs-dark-gray/10 text-bs-dark-gray",
+  RECONCILING: "bg-bs-cobalt/10 text-bs-cobalt",
+  DRAFT: "bg-bs-yellow text-bs-dark-gray",
 };
 
 export function MBAHeader({
@@ -186,7 +186,7 @@ export function MBAHeader({
     <div className="flex items-center justify-between">
       <div>
         <div className="flex items-center gap-2">
-          <h1 className="text-3xl font-bold">{mba.mbaNumber}</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{mba.mbaNumber}</h1>
           <span
             className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
               STATUS_STYLES[mba.status] || STATUS_STYLES.DRAFT

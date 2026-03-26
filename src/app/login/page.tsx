@@ -38,16 +38,16 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-bs-midnight">
+      <Card className="w-full max-w-md shadow-lg border-bs-medium-blue/30">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">MBA Tracker</CardTitle>
+          <CardTitle className="text-2xl text-bs-cobalt">MBA Tracker</CardTitle>
           <p className="text-muted-foreground">Sign in to your account</p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             {error && (
-              <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm">
+              <div className="bg-bs-coral/10 text-bs-coral border border-bs-coral/20 p-3 rounded-md text-sm">
                 {error}
               </div>
             )}
@@ -82,7 +82,7 @@ export default function LoginPage() {
 
           <p className="text-center text-sm text-muted-foreground mt-4">
             Don&apos;t have an account?{" "}
-            <Link href="/signup" className="text-primary hover:underline">
+            <Link href="/signup" className="text-bs-cobalt hover:underline">
               Sign up
             </Link>
           </p>

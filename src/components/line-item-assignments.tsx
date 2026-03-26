@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   Select,
   SelectContent,
@@ -58,20 +59,20 @@ function confidenceBadge(confidence: number | null) {
   if (confidence === null) return null;
   if (confidence >= 0.8) {
     return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-bs-teal/20 text-bs-teal-dark">
         High ({Math.round(confidence * 100)}%)
       </span>
     );
   }
   if (confidence >= 0.5) {
     return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-bs-yellow text-bs-dark-gray">
         Medium ({Math.round(confidence * 100)}%)
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-bs-coral/15 text-bs-coral-dark">
       Low ({Math.round(confidence * 100)}%)
     </span>
   );
@@ -91,6 +92,7 @@ export function LineItemAssignments({
     new Map()
   );
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
 
   const lineItemsTotal = lineItems.reduce((sum, li) => sum + li.amount, 0);
 
@@ -132,6 +134,7 @@ export function LineItemAssignments({
     startTransition(async () => {
       await bulkAssignLineItems(invoiceId, assignments);
       setOverrides(new Map());
+      router.refresh();
     });
   };
 
@@ -209,8 +212,8 @@ export function LineItemAssignments({
             <span
               className={
                 Math.abs(lineItemsTotal - totalAmount) < 0.01
-                  ? "text-green-600"
-                  : "text-orange-600"
+                  ? "text-bs-teal-dark"
+                  : "text-bs-coral"
               }
             >
               {Math.abs(lineItemsTotal - totalAmount) < 0.01
@@ -222,8 +225,8 @@ export function LineItemAssignments({
       )}
 
       {changedCount > 0 && (
-        <div className="sticky bottom-0 mt-4 -mx-6 -mb-6 px-6 py-3 bg-blue-50 border-t border-blue-200 flex items-center justify-between rounded-b-lg">
-          <span className="text-sm text-blue-800">
+        <div className="sticky bottom-0 mt-4 -mx-6 -mb-6 px-6 py-3 bg-bs-light-blue border-t border-bs-cobalt/20 flex items-center justify-between rounded-b-lg">
+          <span className="text-sm text-bs-midnight">
             {changedCount} unsaved{" "}
             {changedCount === 1 ? "change" : "changes"}
           </span>

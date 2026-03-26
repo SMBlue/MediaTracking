@@ -124,8 +124,8 @@ export default async function DashboardPage() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground mt-1">
             Overview of your media buying agreements
           </p>
         </div>
@@ -139,7 +139,7 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Active MBAs</CardDescription>
-            <CardTitle className="text-4xl">{stats.activeCount}</CardTitle>
+            <CardTitle className="text-3xl tabular-nums">{stats.activeCount}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-xs text-muted-foreground">
@@ -151,7 +151,7 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Total Budget</CardDescription>
-            <CardTitle className="text-4xl">
+            <CardTitle className="text-3xl tabular-nums">
               {formatCurrency(stats.totalBudget)}
             </CardTitle>
           </CardHeader>
@@ -165,7 +165,7 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Vendor Invoiced</CardDescription>
-            <CardTitle className="text-4xl">
+            <CardTitle className="text-3xl tabular-nums">
               {formatCurrency(stats.totalInvoiced)}
             </CardTitle>
           </CardHeader>
@@ -181,7 +181,7 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Remaining</CardDescription>
-            <CardTitle className="text-4xl">
+            <CardTitle className="text-3xl tabular-nums text-bs-cobalt">
               {formatCurrency(stats.remaining)}
             </CardTitle>
           </CardHeader>
@@ -198,7 +198,7 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Total Spend</CardDescription>
-            <CardTitle className="text-4xl">
+            <CardTitle className="text-3xl tabular-nums">
               {formatCurrency(stats.totalSpend)}
             </CardTitle>
           </CardHeader>
@@ -212,11 +212,11 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Spend vs Invoiced</CardDescription>
-            <CardTitle className={`text-4xl ${
+            <CardTitle className={`text-3xl tabular-nums ${
               stats.variance !== 0
                 ? stats.variance > 0
-                  ? "text-orange-600"
-                  : "text-blue-600"
+                  ? "text-bs-coral"
+                  : "text-bs-cobalt"
                 : ""
             }`}>
               {stats.variance >= 0 ? "+" : ""}{formatCurrency(stats.variance)}
@@ -236,7 +236,7 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Received from Clients</CardDescription>
-            <CardTitle className="text-4xl text-green-600">
+            <CardTitle className="text-3xl tabular-nums text-bs-teal-dark">
               {formatCurrency(stats.totalClientPaid)}
             </CardTitle>
           </CardHeader>
@@ -250,7 +250,7 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Outstanding from Clients</CardDescription>
-            <CardTitle className="text-4xl text-orange-600">
+            <CardTitle className="text-3xl tabular-nums text-bs-coral">
               {formatCurrency(stats.totalOutstanding)}
             </CardTitle>
           </CardHeader>
@@ -263,11 +263,11 @@ export default async function DashboardPage() {
       </div>
 
       {stats.needsReconCount > 0 && (
-        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-          <p className="text-purple-800">
+        <div className="bg-bs-light-blue border border-bs-cobalt/20 rounded-lg p-4">
+          <p className="text-bs-midnight">
             <strong>{stats.needsReconCount}</strong> active MBA{stats.needsReconCount > 1 ? "s" : ""} may need reconciliation (ended 60+ days ago)
           </p>
-          <Button asChild variant="link" className="p-0 h-auto text-purple-700">
+          <Button asChild variant="link" className="p-0 h-auto text-bs-cobalt">
             <Link href="/mbas">View MBAs</Link>
           </Button>
         </div>
@@ -290,24 +290,24 @@ export default async function DashboardPage() {
           ) : (
             <div className="grid grid-cols-4 gap-4 text-sm">
               <div>
-                <p className="text-muted-foreground">Last Sync</p>
-                <p className="font-medium">
+                <p className="text-muted-foreground text-xs uppercase tracking-wider font-medium">Last Sync</p>
+                <p className="font-medium mt-1">
                   {new Date(emailStatus.lastSync.startedAt).toLocaleString()}
                 </p>
               </div>
               <div>
-                <p className="text-muted-foreground">Emails Processed</p>
-                <p className="font-medium">{emailStatus.lastSync.emailsProcessed}</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wider font-medium">Emails Processed</p>
+                <p className="font-medium mt-1">{emailStatus.lastSync.emailsProcessed}</p>
               </div>
               <div>
-                <p className="text-muted-foreground">Invoices Created</p>
-                <p className="font-medium">{emailStatus.lastSync.invoicesCreated}</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wider font-medium">Invoices Created</p>
+                <p className="font-medium mt-1">{emailStatus.lastSync.invoicesCreated}</p>
               </div>
               <div>
-                <p className="text-muted-foreground">Drafts Pending</p>
-                <p className="font-medium">
+                <p className="text-muted-foreground text-xs uppercase tracking-wider font-medium">Drafts Pending</p>
+                <p className="font-medium mt-1">
                   {emailStatus.draftCount > 0 ? (
-                    <Link href="/invoices/drafts" className="text-purple-600 hover:underline">
+                    <Link href="/invoices/drafts" className="text-bs-cobalt hover:underline">
                       {emailStatus.draftCount} to review
                     </Link>
                   ) : (
@@ -336,22 +336,22 @@ export default async function DashboardPage() {
           ) : (
             <div className="grid grid-cols-4 gap-4 text-sm">
               <div>
-                <p className="text-muted-foreground">Last Sync</p>
-                <p className="font-medium">
+                <p className="text-muted-foreground text-xs uppercase tracking-wider font-medium">Last Sync</p>
+                <p className="font-medium mt-1">
                   {new Date(netsuiteStatus.lastSync.startedAt).toLocaleString()}
                 </p>
               </div>
               <div>
-                <p className="text-muted-foreground">MBAs Checked</p>
-                <p className="font-medium">{netsuiteStatus.lastSync.mbasChecked}</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wider font-medium">MBAs Checked</p>
+                <p className="font-medium mt-1">{netsuiteStatus.lastSync.mbasChecked}</p>
               </div>
               <div>
-                <p className="text-muted-foreground">Payments Updated</p>
-                <p className="font-medium">{netsuiteStatus.lastSync.paymentsUpdated}</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wider font-medium">Payments Updated</p>
+                <p className="font-medium mt-1">{netsuiteStatus.lastSync.paymentsUpdated}</p>
               </div>
               <div>
-                <p className="text-muted-foreground">Rollovers Found</p>
-                <p className="font-medium">{netsuiteStatus.lastSync.rolloversCreated}</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wider font-medium">Rollovers Found</p>
+                <p className="font-medium mt-1">{netsuiteStatus.lastSync.rolloversCreated}</p>
               </div>
             </div>
           )}
@@ -364,13 +364,13 @@ export default async function DashboardPage() {
             <CardTitle>Quick Actions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Button asChild variant="outline" className="w-full justify-start">
+            <Button asChild variant="outline" className="w-full justify-start hover:border-bs-cobalt/30 hover:bg-bs-lavender transition-colors duration-150">
               <Link href="/mbas/new">Create new MBA</Link>
             </Button>
-            <Button asChild variant="outline" className="w-full justify-start">
+            <Button asChild variant="outline" className="w-full justify-start hover:border-bs-cobalt/30 hover:bg-bs-lavender transition-colors duration-150">
               <Link href="/clients/new">Add new client</Link>
             </Button>
-            <Button asChild variant="outline" className="w-full justify-start">
+            <Button asChild variant="outline" className="w-full justify-start hover:border-bs-cobalt/30 hover:bg-bs-lavender transition-colors duration-150">
               <Link href="/invoices/new">Record invoice</Link>
             </Button>
           </CardContent>

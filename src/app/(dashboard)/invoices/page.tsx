@@ -79,8 +79,8 @@ export default async function InvoicesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Vendor Invoices</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-3xl font-bold tracking-tight">Vendor Invoices</h1>
+          <p className="text-muted-foreground mt-1">
             Track invoices from platforms (Google, Meta, etc.) and payment status
           </p>
         </div>
@@ -90,9 +90,9 @@ export default async function InvoicesPage() {
       </div>
 
       {draftCount > 0 && (
-        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+        <div className="bg-bs-yellow/50 border border-bs-yellow rounded-lg p-4">
           <div className="flex items-center justify-between">
-            <p className="text-purple-800">
+            <p className="text-bs-midnight">
               <strong>{draftCount}</strong> draft invoice{draftCount !== 1 ? "s" : ""} pending review
             </p>
             <Button asChild variant="outline" size="sm">
@@ -105,15 +105,15 @@ export default async function InvoicesPage() {
       {(totalUnpaid > 0 || totalCredits > 0) && (
         <div className="flex gap-4">
           {totalUnpaid > 0 && (
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 flex-1">
-              <p className="text-orange-800">
+            <div className="bg-bs-coral/10 border border-bs-coral/30 rounded-lg p-4 flex-1">
+              <p className="text-bs-midnight">
                 <strong>{formatCurrency(totalUnpaid)}</strong> owed to vendors
               </p>
             </div>
           )}
           {totalCredits > 0 && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex-1">
-              <p className="text-blue-800">
+            <div className="bg-bs-light-blue border border-bs-cobalt/20 rounded-lg p-4 flex-1">
+              <p className="text-bs-midnight">
                 <strong>{formatCurrency(totalCredits)}</strong> in credit notes
               </p>
             </div>
@@ -125,13 +125,13 @@ export default async function InvoicesPage() {
         <div className="text-center py-12 text-muted-foreground">
           <p>No invoices yet.</p>
           <p className="mt-2">
-            <Link href="/invoices/new" className="text-primary hover:underline">
+            <Link href="/invoices/new" className="text-bs-cobalt hover:underline">
               Record your first invoice
             </Link>
           </p>
         </div>
       ) : (
-        <div className="border rounded-lg">
+        <div className="border rounded-lg bg-card overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>
@@ -159,11 +159,11 @@ export default async function InvoicesPage() {
                   <TableRow key={invoice.id}>
                     <TableCell>
                       {invoice.type === "CREDIT_NOTE" ? (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-bs-cobalt/10 text-bs-cobalt">
                           Credit
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-bs-dark-gray/10 text-bs-dark-gray">
                           Invoice
                         </span>
                       )}
@@ -176,7 +176,7 @@ export default async function InvoicesPage() {
                         invoice.vendor}
                     </TableCell>
                     <TableCell>{formatDate(invoice.invoiceDate)}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right tabular-nums">
                       {formatCurrency(invoiceTotal)}
                       {invoice._count.lineItems > 0 && (
                         <span className="text-muted-foreground text-xs ml-1">
@@ -186,7 +186,7 @@ export default async function InvoicesPage() {
                     </TableCell>
                     <TableCell>
                       {invoice.allocations.length === 0 ? (
-                        <span className="text-orange-600 text-sm">
+                        <span className="text-bs-coral text-sm">
                           Not allocated
                         </span>
                       ) : (
@@ -197,7 +197,7 @@ export default async function InvoicesPage() {
                             </div>
                           ))}
                           {!isFullyAllocated && (
-                            <span className="text-orange-600">
+                            <span className="text-bs-coral">
                               ({formatCurrency(invoiceTotal - allocatedTotal)}{" "}
                               unallocated)
                             </span>
@@ -207,11 +207,11 @@ export default async function InvoicesPage() {
                     </TableCell>
                     <TableCell>
                       {invoice.isPaid ? (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-bs-teal/20 text-bs-teal-dark">
                           Paid
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-bs-coral/15 text-bs-coral-dark">
                           Unpaid
                         </span>
                       )}

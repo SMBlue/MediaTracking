@@ -128,7 +128,7 @@ function fmt(amount: number) {
 }
 
 function pct(part: number, whole: number) {
-  if (whole === 0) return "—";
+  if (whole === 0) return "\u2014";
   return `${Math.round((part / whole) * 100)}%`;
 }
 
@@ -140,8 +140,8 @@ export default async function CashPositionPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold">Cash Position</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-3xl font-bold tracking-tight">Cash Position</h1>
+        <p className="text-muted-foreground mt-1">
           Financial overview across all active MBAs, grouped by client
         </p>
       </div>
@@ -151,7 +151,7 @@ export default async function CashPositionPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Total Effective Budget</CardDescription>
-            <CardTitle className="text-3xl">
+            <CardTitle className="text-3xl tabular-nums">
               {fmt(totals.effectiveBudget)}
             </CardTitle>
           </CardHeader>
@@ -165,7 +165,7 @@ export default async function CashPositionPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Owed to Vendors</CardDescription>
-            <CardTitle className="text-3xl text-orange-600">
+            <CardTitle className="text-3xl tabular-nums text-bs-coral">
               {fmt(totals.vendorInvoiced)}
             </CardTitle>
           </CardHeader>
@@ -180,7 +180,7 @@ export default async function CashPositionPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Received from Clients</CardDescription>
-            <CardTitle className="text-3xl text-green-600">
+            <CardTitle className="text-3xl tabular-nums text-bs-teal-dark">
               {fmt(totals.clientPaid)}
             </CardTitle>
           </CardHeader>
@@ -196,8 +196,8 @@ export default async function CashPositionPage() {
           <CardHeader className="pb-2">
             <CardDescription>Net Cash Flow</CardDescription>
             <CardTitle
-              className={`text-3xl ${
-                netCashFlow >= 0 ? "text-green-600" : "text-red-600"
+              className={`text-3xl tabular-nums ${
+                netCashFlow >= 0 ? "text-bs-teal-dark" : "text-bs-coral"
               }`}
             >
               {netCashFlow >= 0 ? "+" : ""}
@@ -214,8 +214,8 @@ export default async function CashPositionPage() {
 
       {/* Outstanding summary */}
       {totals.outstanding > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-          <p className="text-amber-800">
+        <div className="bg-bs-yellow/40 border border-bs-yellow rounded-lg p-4">
+          <p className="text-bs-midnight">
             <strong>{fmt(totals.outstanding)}</strong> outstanding from clients
             across{" "}
             {byClient.filter((c) => c.outstanding > 0).length} client
@@ -238,7 +238,7 @@ export default async function CashPositionPage() {
           {byClient.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4">
               No active MBAs found.{" "}
-              <Link href="/mbas/new" className="text-primary hover:underline">
+              <Link href="/mbas/new" className="text-bs-cobalt hover:underline">
                 Create one
               </Link>{" "}
               to get started.
@@ -271,39 +271,39 @@ export default async function CashPositionPage() {
                         <TableCell>
                           <Link
                             href={`/clients/${c.clientId}`}
-                            className="font-medium text-primary hover:underline"
+                            className="font-medium text-bs-cobalt hover:underline"
                           >
                             {c.clientName}
                           </Link>
                         </TableCell>
-                        <TableCell className="text-center">
+                        <TableCell className="text-center tabular-nums">
                           {c.mbaCount}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right tabular-nums">
                           {fmt(c.effectiveBudget)}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right tabular-nums">
                           {fmt(c.vendorInvoiced)}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right tabular-nums">
                           {fmt(c.spend)}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right tabular-nums">
                           {fmt(c.remaining)}
                         </TableCell>
-                        <TableCell className="text-right text-green-600">
-                          {c.clientPaid > 0 ? fmt(c.clientPaid) : "—"}
+                        <TableCell className="text-right tabular-nums text-bs-teal-dark">
+                          {c.clientPaid > 0 ? fmt(c.clientPaid) : "\u2014"}
                         </TableCell>
                         <TableCell
-                          className={`text-right ${
-                            c.outstanding > 0 ? "text-orange-600 font-medium" : ""
+                          className={`text-right tabular-nums ${
+                            c.outstanding > 0 ? "text-bs-coral font-medium" : ""
                           }`}
                         >
-                          {c.outstanding > 0 ? fmt(c.outstanding) : "—"}
+                          {c.outstanding > 0 ? fmt(c.outstanding) : "\u2014"}
                         </TableCell>
                         <TableCell
-                          className={`text-right font-medium ${
-                            net >= 0 ? "text-green-600" : "text-red-600"
+                          className={`text-right tabular-nums font-medium ${
+                            net >= 0 ? "text-bs-teal-dark" : "text-bs-coral"
                           }`}
                         >
                           {net >= 0 ? "+" : ""}
@@ -313,32 +313,32 @@ export default async function CashPositionPage() {
                     );
                   })}
                   {/* Totals row */}
-                  <TableRow className="border-t-2 font-bold bg-muted/50">
+                  <TableRow className="border-t-2 font-bold bg-bs-lavender/30">
                     <TableCell>Total</TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-center tabular-nums">
                       {totals.mbaCount}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right tabular-nums">
                       {fmt(totals.effectiveBudget)}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right tabular-nums">
                       {fmt(totals.vendorInvoiced)}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right tabular-nums">
                       {fmt(totals.spend)}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right tabular-nums">
                       {fmt(totals.remaining)}
                     </TableCell>
-                    <TableCell className="text-right text-green-600">
+                    <TableCell className="text-right tabular-nums text-bs-teal-dark">
                       {fmt(totals.clientPaid)}
                     </TableCell>
-                    <TableCell className="text-right text-orange-600">
+                    <TableCell className="text-right tabular-nums text-bs-coral">
                       {fmt(totals.outstanding)}
                     </TableCell>
                     <TableCell
-                      className={`text-right ${
-                        netCashFlow >= 0 ? "text-green-600" : "text-red-600"
+                      className={`text-right tabular-nums ${
+                        netCashFlow >= 0 ? "text-bs-teal-dark" : "text-bs-coral"
                       }`}
                     >
                       {netCashFlow >= 0 ? "+" : ""}

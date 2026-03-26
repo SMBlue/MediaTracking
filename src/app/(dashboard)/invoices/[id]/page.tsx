@@ -103,20 +103,20 @@ export default async function InvoiceDetailPage({
     if (confidence === null) return null;
     if (confidence >= 0.8) {
       return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-bs-teal/20 text-bs-teal-dark">
           High ({Math.round(confidence * 100)}%)
         </span>
       );
     }
     if (confidence >= 0.5) {
       return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-bs-yellow text-bs-dark-gray">
           Medium ({Math.round(confidence * 100)}%)
         </span>
       );
     }
     return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-bs-coral/15 text-bs-coral-dark">
         Low ({Math.round(confidence * 100)}%)
       </span>
     );
@@ -125,13 +125,13 @@ export default async function InvoiceDetailPage({
   return (
     <div className="space-y-6">
       {invoice.status === "DRAFT" && (
-        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+        <div className="bg-bs-yellow/30 border border-bs-yellow rounded-lg p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-purple-800 font-medium">
+              <p className="text-bs-midnight font-medium">
                 Draft Invoice — Pending Review
               </p>
-              <p className="text-purple-600 text-sm">
+              <p className="text-bs-dark-gray text-sm">
                 This invoice was auto-parsed from email. Review the details and
                 confirm or discard.
                 {invoice.parseConfidence !== null && (
@@ -205,7 +205,7 @@ export default async function InvoiceDetailPage({
               {formatCurrency(allocatedTotal)}
             </p>
             {unallocated > 0.01 && (
-              <p className="text-sm text-orange-600">
+              <p className="text-sm text-bs-coral">
                 {formatCurrency(unallocated)} unallocated
               </p>
             )}
@@ -221,7 +221,7 @@ export default async function InvoiceDetailPage({
           <CardContent>
             <p
               className={`text-2xl font-bold ${
-                invoice.isPaid ? "text-green-600" : "text-orange-600"
+                invoice.isPaid ? "text-bs-teal-dark" : "text-bs-coral"
               }`}
             >
               {invoice.isPaid ? "Paid" : "Unpaid"}
@@ -241,7 +241,7 @@ export default async function InvoiceDetailPage({
           <CardTitle className="flex items-center gap-2">
             Line Items
             {invoice.lineItems.length > 0 && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-bs-lavender text-bs-dark-gray">
                 {invoice.lineItems.length}
               </span>
             )}

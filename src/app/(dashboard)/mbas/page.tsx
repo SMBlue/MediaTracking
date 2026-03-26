@@ -99,8 +99,8 @@ export default async function MBAsPage({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">MBAs</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-3xl font-bold tracking-tight">MBAs</h1>
+          <p className="text-muted-foreground mt-1">
             Media Buying Agreements and their budgets
           </p>
         </div>
@@ -131,8 +131,8 @@ export default async function MBAsPage({
       </div>
 
       {needsReconCount > 0 && (
-        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-          <p className="text-purple-800">
+        <div className="bg-bs-light-blue border border-bs-cobalt/20 rounded-lg p-4">
+          <p className="text-bs-midnight">
             <strong>{needsReconCount}</strong> MBA{needsReconCount > 1 ? "s" : ""} may need reconciliation (ended 60+ days ago)
           </p>
         </div>
@@ -142,13 +142,13 @@ export default async function MBAsPage({
         <div className="text-center py-12 text-muted-foreground">
           <p>No MBAs yet{selectedClient ? ` for ${selectedClient.name}` : ""}.</p>
           <p className="mt-2">
-            <Link href="/mbas/new" className="text-primary hover:underline">
+            <Link href="/mbas/new" className="text-bs-cobalt hover:underline">
               Create your first MBA
             </Link>
           </p>
         </div>
       ) : (
-        <div className="border rounded-lg">
+        <div className="border rounded-lg bg-card overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>
@@ -186,37 +186,37 @@ export default async function MBAsPage({
                   <TableRow key={mba.id}>
                     {!clientId && <TableCell>{mba.client.name}</TableCell>}
                     <TableCell className="font-medium">{mba.mbaNumber}</TableCell>
-                    <TableCell className="text-muted-foreground text-sm">{mba.netsuiteProjectNumber || "–"}</TableCell>
+                    <TableCell className="text-muted-foreground text-sm">{mba.netsuiteProjectNumber || "\u2013"}</TableCell>
                     <TableCell>{mba.name}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right tabular-nums">
                       {formatCurrency(budget)}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right tabular-nums">
                       {formatCurrency(spend)}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right tabular-nums">
                       {formatCurrency(invoiced)}
                       <span className="text-muted-foreground text-xs ml-1">
                         ({Math.round(percentUsed)}%)
                       </span>
                     </TableCell>
                     <TableCell
-                      className={`text-right ${
-                        remaining < 0 ? "text-red-600 font-medium" : ""
+                      className={`text-right tabular-nums ${
+                        remaining < 0 ? "text-bs-coral font-medium" : ""
                       }`}
                     >
                       {formatCurrency(remaining)}
                     </TableCell>
                     <TableCell>
                       <span
-                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
                           mba.status === "ACTIVE"
-                            ? "bg-green-100 text-green-700"
+                            ? "bg-bs-teal/20 text-bs-teal-dark"
                             : mba.status === "CLOSED"
-                            ? "bg-gray-100 text-gray-700"
+                            ? "bg-bs-dark-gray/10 text-bs-dark-gray"
                             : mba.status === "RECONCILING"
-                            ? "bg-purple-100 text-purple-700"
-                            : "bg-yellow-100 text-yellow-700"
+                            ? "bg-bs-cobalt/10 text-bs-cobalt"
+                            : "bg-bs-yellow text-bs-dark-gray"
                         }`}
                       >
                         {mba.status}
@@ -224,11 +224,11 @@ export default async function MBAsPage({
                     </TableCell>
                     <TableCell>
                       {mba.clientPaid ? (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-bs-teal/20 text-bs-teal-dark">
                           Paid
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-bs-coral/15 text-bs-coral-dark">
                           Outstanding
                         </span>
                       )}
@@ -249,18 +249,18 @@ export default async function MBAsPage({
                   <TableCell colSpan={3} className="font-medium">
                     TOTALS ({mbas.length} MBAs)
                   </TableCell>
-                  <TableCell className="text-right font-medium">
+                  <TableCell className="text-right font-medium tabular-nums">
                     {formatCurrency(totals.budget)}
                   </TableCell>
-                  <TableCell className="text-right font-medium">
+                  <TableCell className="text-right font-medium tabular-nums">
                     {formatCurrency(totals.spend)}
                   </TableCell>
-                  <TableCell className="text-right font-medium">
+                  <TableCell className="text-right font-medium tabular-nums">
                     {formatCurrency(totals.invoiced)}
                   </TableCell>
                   <TableCell
-                    className={`text-right font-medium ${
-                      totals.remaining < 0 ? "text-red-600" : ""
+                    className={`text-right font-medium tabular-nums ${
+                      totals.remaining < 0 ? "text-bs-coral" : ""
                     }`}
                   >
                     {formatCurrency(totals.remaining)}

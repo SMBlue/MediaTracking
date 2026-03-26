@@ -108,7 +108,7 @@ export default async function ClientDetailPage({
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">{client.name}</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{client.name}</h1>
           <p className="text-muted-foreground">
             Created {new Date(client.createdAt).toLocaleDateString()}
           </p>
@@ -187,10 +187,10 @@ export default async function ClientDetailPage({
                       <span
                         className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                           mba.status === "ACTIVE"
-                            ? "bg-green-100 text-green-700"
+                            ? "bg-bs-teal/20 text-bs-teal-dark"
                             : mba.status === "CLOSED"
-                            ? "bg-gray-100 text-gray-700"
-                            : "bg-yellow-100 text-yellow-700"
+                            ? "bg-bs-dark-gray/10 text-bs-dark-gray"
+                            : "bg-bs-yellow text-bs-dark-gray"
                         }`}
                       >
                         {mba.status}

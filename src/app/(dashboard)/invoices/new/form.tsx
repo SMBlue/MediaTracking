@@ -361,8 +361,8 @@ export function NewInvoiceForm() {
                         <span
                           className={`ml-2 ${
                             Math.abs(lineItemsTotal - invoiceTotal) < 0.01
-                              ? "text-green-600"
-                              : "text-orange-600"
+                              ? "text-bs-teal-dark"
+                              : "text-bs-coral"
                           }`}
                         >
                           {Math.abs(lineItemsTotal - invoiceTotal) < 0.01
@@ -438,8 +438,8 @@ export function NewInvoiceForm() {
                     <span
                       className={
                         Math.abs(remaining) < 0.01
-                          ? "text-green-600"
-                          : "text-orange-600"
+                          ? "text-bs-teal-dark"
+                          : "text-bs-coral"
                       }
                     >
                       {Math.abs(remaining) < 0.01

@@ -108,20 +108,20 @@ function confidenceBadge(confidence: number | null) {
   if (confidence === null) return null;
   if (confidence >= 0.8) {
     return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-bs-teal/20 text-bs-teal-dark">
         High ({Math.round(confidence * 100)}%)
       </span>
     );
   }
   if (confidence >= 0.5) {
     return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-bs-yellow text-bs-dark-gray">
         Medium ({Math.round(confidence * 100)}%)
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-bs-coral/15 text-bs-coral-dark">
       Low ({Math.round(confidence * 100)}%)
     </span>
   );
@@ -138,7 +138,7 @@ export default async function DraftInvoicesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Draft Invoices</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Draft Invoices</h1>
           <p className="text-muted-foreground">
             Review auto-parsed invoices from email before confirming
           </p>

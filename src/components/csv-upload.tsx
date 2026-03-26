@@ -153,7 +153,7 @@ export function CSVUpload({ onImport, onCancel }: CSVUploadProps) {
   };
 
   return (
-    <div className="space-y-4 border rounded-lg p-4 bg-gray-50">
+    <div className="space-y-4 border rounded-lg p-4 bg-bs-lavender/50">
       <div className="space-y-2">
         <p className="text-sm font-medium">Import line items from CSV</p>
         <p className="text-xs text-muted-foreground">
@@ -169,7 +169,7 @@ export function CSVUpload({ onImport, onCancel }: CSVUploadProps) {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-700">
+        <div className="bg-bs-coral/10 border border-bs-coral/20 rounded p-3 text-sm text-bs-coral-dark">
           {error}
         </div>
       )}
@@ -188,7 +188,7 @@ export function CSVUpload({ onImport, onCancel }: CSVUploadProps) {
               {preview.map((item, i) => (
                 <TableRow key={i} className={warnings.includes(i) ? "bg-yellow-50" : ""}>
                   <TableCell>{item.campaignName || <span className="text-muted-foreground">—</span>}</TableCell>
-                  <TableCell className={`text-right ${warnings.includes(i) ? "text-orange-600" : ""}`}>
+                  <TableCell className={`text-right ${warnings.includes(i) ? "text-bs-coral" : ""}`}>
                     {item.amount === 0 && warnings.includes(i) ? "Invalid" : `$${item.amount.toLocaleString()}`}
                   </TableCell>
                   <TableCell>{item.platform || <span className="text-muted-foreground">—</span>}</TableCell>
@@ -197,7 +197,7 @@ export function CSVUpload({ onImport, onCancel }: CSVUploadProps) {
             </TableBody>
           </Table>
           {warnings.length > 0 && (
-            <p className="text-xs text-orange-600">
+            <p className="text-xs text-bs-coral">
               {warnings.length} row(s) have missing or invalid amounts
             </p>
           )}

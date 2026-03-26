@@ -37,7 +37,7 @@ function formatChanges(changes: unknown) {
   if (entries.length === 0) return "-";
 
   return entries.map(([field, { old, new: newVal }]) => (
-    `${field}: ${formatValue(old)} → ${formatValue(newVal)}`
+    `${field}: ${formatValue(old)} \u2192 ${formatValue(newVal)}`
   )).join(", ");
 }
 
@@ -52,13 +52,13 @@ function formatValue(val: unknown): string {
 function getActionColor(action: string) {
   switch (action) {
     case "CREATE":
-      return "bg-green-100 text-green-700";
+      return "bg-bs-teal/20 text-bs-teal-dark";
     case "UPDATE":
-      return "bg-blue-100 text-blue-700";
+      return "bg-bs-cobalt/10 text-bs-cobalt";
     case "DELETE":
-      return "bg-red-100 text-red-700";
+      return "bg-bs-coral/15 text-bs-coral-dark";
     default:
-      return "bg-gray-100 text-gray-700";
+      return "bg-bs-dark-gray/10 text-bs-dark-gray";
   }
 }
 
@@ -68,8 +68,8 @@ export default async function AuditLogPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Audit Log</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-3xl font-bold tracking-tight">Audit Log</h1>
+        <p className="text-muted-foreground mt-1">
           Track all changes made to your data
         </p>
       </div>
@@ -102,7 +102,7 @@ export default async function AuditLogPage() {
                     </TableCell>
                     <TableCell>
                       <span
-                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getActionColor(
+                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getActionColor(
                           log.action
                         )}`}
                       >
