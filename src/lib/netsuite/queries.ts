@@ -8,12 +8,35 @@ import { createNetSuiteClient } from "./tba-client";
 // --- Validation ---
 
 function assertSafeString(value: string, name: string): void {
-  if (/['";\-\-]/.test(value)) {
+  // Block SQL injection chars but allow hyphens (common in invoice numbers and dates)
+  if (/['";]/.test(value)) {
     throw new Error(`Invalid ${name}: contains unsafe characters`);
   }
 }
 
+function assertSafeDate(value: string): void {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw new Error(`Invalid date format: expected YYYY-MM-DD, got "${value}"`);
+  }
+}
+
+/** Convert YYYY-MM-DD to M/D/YYYY (NetSuite SuiteQL date format) */
+function toNsDate(isoDate: string): string {
+  const [y, m, d] = isoDate.split("-");
+  return `${parseInt(m)}/${parseInt(d)}/${y}`;
+}
+
 // --- Types ---
+
+export interface NetsuiteVendorBillRow {
+  transactionId: string;
+  invoiceNumber: string;
+  invoiceDate: string;
+  amount: number;
+  status: string; // e.g. "paidInFull", "open", "pendingApproval"
+  vendorName: string;
+  paidDate: string | null;
+}
 
 export interface NetsuiteInvoiceRow {
   transactionId: string;
@@ -199,4 +222,164 @@ export async function fetchJournalEntriesForProjects(
     toProjectName: r.to_project_name,
     amount: parseFloat(String(r.amount)) || 0,
   }));
+}
+
+// --- Ad Platform Vendor Mapping ---
+
+/**
+ * Maps NetSuite vendor names to our Platform enum.
+ * Only ad/media platform vendors — excludes operational vendors like rent, payroll, etc.
+ */
+const NS_AD_VENDOR_MAP: Record<string, string> = {
+  "META PLATFORMS INC.": "META",
+  "META PLATFORMS INC. (UK)": "META",
+  "GOOGLE": "GOOGLE_ADS",
+  "GOOGLE (UK)": "GOOGLE_ADS",
+  "MICROSOFT IRELAND OPERATIONS LIMITED": "BING",
+  "MICROSOFT ONLINE": "BING",
+  "LINKEDIN CORPORATION": "LINKEDIN",
+  "TIKTOK INC.": "TIKTOK",
+  "REDDIT INC.": "OTHER",
+  "SPOTIFY USA INC": "OTHER",
+  "SPOTIFY AB": "OTHER",
+  "NEXTDOOR, INC.": "OTHER",
+  "PINTEREST INC": "OTHER",
+  "QUORA, INC": "OTHER",
+  "STACKADAPT INC": "OTHER",
+  "TABOOLA, INC.": "OTHER",
+  "OUTBRAIN, INC.": "OTHER",
+  "AMAZON MEDIA GROUP": "OTHER",
+  "ROKU, INC": "OTHER",
+  "HULU, LLC": "OTHER",
+  "X CORP (TWITTER)": "OTHER",
+};
+
+/** Check if a NetSuite vendor name is a known ad platform */
+export function isAdVendor(vendorName: string): boolean {
+  return vendorName in NS_AD_VENDOR_MAP;
+}
+
+/** Get the Platform enum value for a NetSuite ad vendor */
+export function getAdVendorPlatform(vendorName: string): string | null {
+  return NS_AD_VENDOR_MAP[vendorName] ?? null;
+}
+
+// --- Vendor Bill Helpers ---
+
+/** Map NetSuite VendBill status codes to human-readable values */
+function mapVendBillStatus(code: string): string {
+  switch (code) {
+    case "A": return "open";
+    case "B": return "paidInFull";
+    case "C": return "cancelled";
+    case "D": return "pendingApproval";
+    default: return code;
+  }
+}
+
+// --- Vendor Bill Queries ---
+
+/**
+ * Fetch vendor bills from NetSuite and their payment status.
+ * These are bills FROM vendors (Meta, Google, etc.) TO the agency.
+ * Matches against our Invoice records by invoice number.
+ */
+export async function fetchVendorBillsByInvoiceNumbers(
+  invoiceNumbers: string[]
+): Promise<NetsuiteVendorBillRow[]> {
+  if (invoiceNumbers.length === 0) return [];
+
+  invoiceNumbers.forEach((n) => assertSafeString(n, "invoiceNumber"));
+  const client = createNetSuiteClient();
+
+  // Batch in groups of 200 to avoid query length limits
+  const allRows: NetsuiteVendorBillRow[] = [];
+
+  for (let i = 0; i < invoiceNumbers.length; i += 200) {
+    const batch = invoiceNumbers.slice(i, i + 200);
+    const inClause = batch.map((n) => `'${n}'`).join(", ");
+
+    const rows = await client.queryAll<{
+      id: string;
+      tranid: string;
+      trandate: string;
+      foreigntotal: string;
+      status: string;
+      vendor_name: string;
+      lastmodifieddate: string;
+    }>(`
+      SELECT t.id, t.tranid, t.trandate, t.foreigntotal, t.status,
+             BUILTIN.DF(t.entity) AS vendor_name,
+             t.lastmodifieddate
+      FROM transaction t
+      WHERE t.type = 'VendBill'
+        AND t.tranid IN (${inClause})
+      ORDER BY t.trandate DESC
+    `);
+
+    allRows.push(
+      ...rows.map((r) => ({
+        transactionId: String(r.id),
+        invoiceNumber: r.tranid,
+        invoiceDate: r.trandate,
+        amount: Math.abs(parseFloat(String(r.foreigntotal)) || 0),
+        status: mapVendBillStatus(r.status),
+        vendorName: r.vendor_name || "",
+        paidDate: r.status === "B" ? r.lastmodifieddate : null,
+      }))
+    );
+  }
+
+  return allRows;
+}
+
+/**
+ * Fetch ALL vendor bills from NetSuite within a date range.
+ * Used as a broader search when invoice numbers don't match exactly.
+ */
+export async function fetchRecentVendorBills(
+  afterDate: string // YYYY-MM-DD
+): Promise<NetsuiteVendorBillRow[]> {
+  assertSafeDate(afterDate);
+  const client = createNetSuiteClient();
+
+  const rows = await client.queryAll<{
+    id: string;
+    tranid: string;
+    trandate: string;
+    foreigntotal: string;
+    status: string;
+    vendor_name: string;
+    lastmodifieddate: string;
+  }>(`
+    SELECT t.id, t.tranid, t.trandate, t.foreigntotal, t.status,
+           BUILTIN.DF(t.entity) AS vendor_name,
+           t.lastmodifieddate
+    FROM transaction t
+    WHERE t.type = 'VendBill'
+      AND t.trandate >= '${toNsDate(afterDate)}'
+    ORDER BY t.trandate DESC
+  `);
+
+  return rows.map((r) => ({
+    transactionId: String(r.id),
+    invoiceNumber: r.tranid,
+    invoiceDate: r.trandate,
+    amount: Math.abs(parseFloat(String(r.foreigntotal)) || 0),
+    status: mapVendBillStatus(r.status),
+    vendorName: r.vendor_name || "",
+    paidDate: r.status === "B" ? r.lastmodifieddate : null,
+  }));
+}
+
+/**
+ * Fetch only ad-platform vendor bills from NetSuite within a date range.
+ * Filters to known ad vendors (Meta, Google, Microsoft, etc.) client-side
+ * since SuiteQL doesn't support IN clauses on BUILTIN.DF.
+ */
+export async function fetchAdVendorBills(
+  afterDate: string // YYYY-MM-DD
+): Promise<NetsuiteVendorBillRow[]> {
+  const allBills = await fetchRecentVendorBills(afterDate);
+  return allBills.filter((b) => isAdVendor(b.vendorName));
 }

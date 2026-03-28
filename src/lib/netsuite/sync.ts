@@ -9,13 +9,29 @@ import { isNetsuiteConfigured } from "./tba-client";
 import {
   fetchClientInvoicesForProjects,
   fetchJournalEntriesForProjects,
+  fetchVendorBillsByInvoiceNumbers,
+  fetchRecentVendorBills,
+  fetchAdVendorBills,
+  isAdVendor,
+  getAdVendorPlatform,
 } from "./queries";
+
+export interface UnmatchedAdBill {
+  invoiceNumber: string;
+  vendorName: string;
+  platform: string | null;
+  amount: number;
+  invoiceDate: string;
+  status: string;
+}
 
 export interface NetsuiteSyncResult {
   mbasChecked: number;
   paymentsUpdated: number;
   rolloversCreated: number;
   invoicesUpserted: number;
+  vendorBillsMatched: number;
+  unmatchedAdBills: UnmatchedAdBill[];
   errors: string[];
 }
 
@@ -29,6 +45,8 @@ export async function syncFromNetsuite(): Promise<NetsuiteSyncResult> {
     paymentsUpdated: 0,
     rolloversCreated: 0,
     invoicesUpserted: 0,
+    vendorBillsMatched: 0,
+    unmatchedAdBills: [],
     errors: [],
   };
 
@@ -54,9 +72,8 @@ export async function syncFromNetsuite(): Promise<NetsuiteSyncResult> {
     .map((m) => m.netsuiteProjectNumber!)
     .filter(Boolean);
 
-  if (projectNumbers.length === 0) {
-    return result;
-  }
+  // Client invoice + JE sync requires project numbers; vendor bill sync does not
+  const hasProjects = projectNumbers.length > 0;
 
   result.mbasChecked = mbas.length;
 
@@ -68,8 +85,8 @@ export async function syncFromNetsuite(): Promise<NetsuiteSyncResult> {
     }
   }
 
-  // --- Sync Client Invoices ---
-  try {
+  // --- Sync Client Invoices (requires project numbers) ---
+  if (hasProjects) try {
     const invoices = await fetchClientInvoicesForProjects(projectNumbers);
 
     // Group invoices by project to determine payment status
@@ -174,8 +191,8 @@ export async function syncFromNetsuite(): Promise<NetsuiteSyncResult> {
     result.errors.push(`Client invoice sync failed: ${err}`);
   }
 
-  // --- Sync Journal Entries (Rollovers) ---
-  try {
+  // --- Sync Journal Entries (Rollovers, requires project numbers) ---
+  if (hasProjects) try {
     const journalEntries =
       await fetchJournalEntriesForProjects(projectNumbers);
 
@@ -226,6 +243,104 @@ export async function syncFromNetsuite(): Promise<NetsuiteSyncResult> {
     }
   } catch (err) {
     result.errors.push(`Journal entry sync failed: ${err}`);
+  }
+
+  // --- Sync Vendor Bill Payment Status ---
+  try {
+    // Get all unpaid invoices from our database
+    const unpaidInvoices = await prisma.invoice.findMany({
+      where: { isPaid: false },
+      select: { id: true, invoiceNumber: true, vendor: true, totalAmount: true },
+    });
+
+    if (unpaidInvoices.length > 0) {
+      const invoiceNumbers = unpaidInvoices.map((inv) => inv.invoiceNumber);
+
+      // First try matching by invoice number
+      let vendorBills = await fetchVendorBillsByInvoiceNumbers(invoiceNumbers);
+
+      // Build a lookup: invoice number -> vendor bill
+      const billsByNumber = new Map<string, typeof vendorBills[0]>();
+      for (const bill of vendorBills) {
+        billsByNumber.set(bill.invoiceNumber, bill);
+      }
+
+      // If we didn't match many, also fetch recent bills for fuzzy matching
+      const matchedCount = unpaidInvoices.filter((inv) =>
+        billsByNumber.has(inv.invoiceNumber)
+      ).length;
+
+      if (matchedCount < unpaidInvoices.length * 0.5) {
+        // Fetch bills from the last 6 months for broader matching
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+        const afterDate = sixMonthsAgo.toISOString().split("T")[0];
+        const recentBills = await fetchRecentVendorBills(afterDate);
+
+        for (const bill of recentBills) {
+          if (!billsByNumber.has(bill.invoiceNumber)) {
+            billsByNumber.set(bill.invoiceNumber, bill);
+          }
+        }
+      }
+
+      // Match and update
+      for (const invoice of unpaidInvoices) {
+        const bill = billsByNumber.get(invoice.invoiceNumber);
+        if (!bill) continue;
+
+        const isPaid = bill.status === "paidInFull";
+
+        try {
+          await prisma.invoice.update({
+            where: { id: invoice.id },
+            data: {
+              isPaid,
+              paidDate: isPaid && bill.paidDate ? new Date(bill.paidDate) : null,
+            },
+          });
+          result.vendorBillsMatched++;
+        } catch (err) {
+          result.errors.push(
+            `Failed to update vendor bill status for invoice ${invoice.invoiceNumber}: ${err}`
+          );
+        }
+      }
+    }
+  } catch (err) {
+    result.errors.push(`Vendor bill sync failed: ${err}`);
+  }
+
+  // --- Find Ad Vendor Bills in NetSuite Not in Our System ---
+  try {
+    // Look back 6 months for ad vendor bills
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    const afterDate = sixMonthsAgo.toISOString().split("T")[0];
+
+    const adBills = await fetchAdVendorBills(afterDate);
+
+    // Get all our invoice numbers for comparison
+    const allInvoices = await prisma.invoice.findMany({
+      select: { invoiceNumber: true },
+    });
+    const ourInvoiceNumbers = new Set(allInvoices.map((i) => i.invoiceNumber));
+
+    // Find ad bills we don't have
+    for (const bill of adBills) {
+      if (!ourInvoiceNumbers.has(bill.invoiceNumber)) {
+        result.unmatchedAdBills.push({
+          invoiceNumber: bill.invoiceNumber,
+          vendorName: bill.vendorName,
+          platform: getAdVendorPlatform(bill.vendorName),
+          amount: bill.amount,
+          invoiceDate: bill.invoiceDate,
+          status: bill.status,
+        });
+      }
+    }
+  } catch (err) {
+    result.errors.push(`Ad vendor bill reconciliation failed: ${err}`);
   }
 
   return result;
