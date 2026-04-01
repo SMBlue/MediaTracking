@@ -1,6 +1,6 @@
 # MBA Tracker
 
-A web application for tracking Media Buying Agreements (MBAs), invoices, and spend for a digital marketing agency.
+A web application for tracking Media Buying Agreements (MBAs) and invoices for a digital marketing agency.
 
 ## Tech Stack
 
@@ -20,7 +20,7 @@ src/
 │   ├── (dashboard)/          # Protected routes with nav
 │   │   ├── page.tsx          # Dashboard with stats
 │   │   ├── clients/          # Client CRUD
-│   │   ├── mbas/             # MBA CRUD + spend entry
+│   │   ├── mbas/             # MBA CRUD
 │   │   └── invoices/         # Invoice CRUD + allocation + drafts
 │   ├── login/                # Login page
 │   ├── signup/               # Signup page
@@ -61,7 +61,6 @@ npx prisma@5 db push          # Push schema to database
 Core models:
 - **Client** - Advertiser/customer
 - **MBA** - Media Buying Agreement (budget container)
-- **SpendEntry** - Actual spend logged by platform/month
 - **Invoice** - Vendor invoice
 - **InvoiceAllocation** - Links invoices to MBAs (supports splitting)
 - **ChangeOrder** - Budget modifications to existing MBAs (positive or negative)

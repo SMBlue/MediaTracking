@@ -25,7 +25,6 @@ interface ClientCashPosition {
   mbaCount: number;
   effectiveBudget: number;
   vendorInvoiced: number;
-  spend: number;
   remaining: number;
   clientPaid: number;
   outstanding: number;
@@ -42,7 +41,6 @@ async function getCashPositionData(): Promise<{
     include: {
       client: { select: { id: true, name: true } },
       invoiceAllocations: true,
-      spendEntries: true,
       changeOrders: true,
       creditsIn: true,
       creditsOut: true,
@@ -58,7 +56,6 @@ async function getCashPositionData(): Promise<{
       mbaCount: 0,
       effectiveBudget: 0,
       vendorInvoiced: 0,
-      spend: 0,
       remaining: 0,
       clientPaid: 0,
       outstanding: 0,
@@ -67,10 +64,6 @@ async function getCashPositionData(): Promise<{
     const effectiveBudget = calculateEffectiveBudget(mba);
     const vendorInvoiced = mba.invoiceAllocations.reduce(
       (sum, a) => sum + Number(a.amount),
-      0
-    );
-    const spend = mba.spendEntries.reduce(
-      (sum, s) => sum + Number(s.amount),
       0
     );
     const remaining = effectiveBudget - vendorInvoiced;
@@ -82,7 +75,6 @@ async function getCashPositionData(): Promise<{
     existing.mbaCount += 1;
     existing.effectiveBudget += effectiveBudget;
     existing.vendorInvoiced += vendorInvoiced;
-    existing.spend += spend;
     existing.remaining += remaining;
     existing.clientPaid += clientPaidAmt;
     existing.outstanding += outstandingAmt;
@@ -99,7 +91,6 @@ async function getCashPositionData(): Promise<{
       mbaCount: acc.mbaCount + c.mbaCount,
       effectiveBudget: acc.effectiveBudget + c.effectiveBudget,
       vendorInvoiced: acc.vendorInvoiced + c.vendorInvoiced,
-      spend: acc.spend + c.spend,
       remaining: acc.remaining + c.remaining,
       clientPaid: acc.clientPaid + c.clientPaid,
       outstanding: acc.outstanding + c.outstanding,
@@ -108,7 +99,6 @@ async function getCashPositionData(): Promise<{
       mbaCount: 0,
       effectiveBudget: 0,
       vendorInvoiced: 0,
-      spend: 0,
       remaining: 0,
       clientPaid: 0,
       outstanding: 0,
@@ -256,7 +246,6 @@ export default async function CashPositionPage() {
                     <TableHead className="text-right">
                       Vendor Invoiced
                     </TableHead>
-                    <TableHead className="text-right">Spend</TableHead>
                     <TableHead className="text-right">Remaining</TableHead>
                     <TableHead className="text-right">Client Paid</TableHead>
                     <TableHead className="text-right">Outstanding</TableHead>
@@ -284,9 +273,6 @@ export default async function CashPositionPage() {
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
                           {fmt(c.vendorInvoiced)}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {fmt(c.spend)}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
                           {fmt(c.remaining)}
@@ -323,9 +309,6 @@ export default async function CashPositionPage() {
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {fmt(totals.vendorInvoiced)}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {fmt(totals.spend)}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {fmt(totals.remaining)}

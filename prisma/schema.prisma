@@ -46,7 +46,6 @@ model User {
   sessions      Session[]
 
   // App-specific
-  spendEntries  SpendEntry[]
   createdAt     DateTime @default(now())
 }
 
@@ -90,7 +89,6 @@ model MBA {
   netsuiteProjectNumber String?
 
   client              Client              @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  spendEntries        SpendEntry[]
   invoiceAllocations  InvoiceAllocation[]
   changeOrders        ChangeOrder[]
   creditsOut          CreditRollover[]    @relation("CreditsOut")
@@ -105,23 +103,6 @@ enum MBAStatus {
   ACTIVE
   RECONCILING
   CLOSED
-}
-
-model SpendEntry {
-  id        String   @id @default(cuid())
-  mbaId     String
-  platform  Platform
-  period    DateTime @db.Date // First day of month
-  amount    Decimal  @db.Decimal(15, 2)
-  notes     String?
-  createdBy String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  mba       MBA      @relation(fields: [mbaId], references: [id], onDelete: Cascade)
-  user      User?    @relation(fields: [createdBy], references: [id])
-
-  @@unique([mbaId, platform, period])
 }
 
 enum Platform {
@@ -194,7 +175,7 @@ model InvoiceAllocation {
 // Audit trail for tracking changes
 model AuditLog {
   id         String   @id @default(cuid())
-  entityType String   // "MBA", "Invoice", "SpendEntry", "Client"
+  entityType String   // "MBA", "Invoice", "Client"
   entityId   String
   action     String   // "CREATE", "UPDATE", "DELETE"
   changes    Json?    // { field: { old: x, new: y } }

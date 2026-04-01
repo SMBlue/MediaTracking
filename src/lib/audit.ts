@@ -1,7 +1,7 @@
 import { prisma } from "./db";
 import { Prisma } from "@prisma/client";
 
-type EntityType = "Client" | "MBA" | "Invoice" | "SpendEntry" | "InvoiceAllocation" | "ChangeOrder" | "CreditRollover" | "ReconciliationRecord" | "VendorInvoiceLineItem" | "EmailSyncLog" | "NetsuiteSyncLog" | "NetsuiteClientInvoice";
+type EntityType = "Client" | "MBA" | "Invoice" | "InvoiceAllocation" | "ChangeOrder" | "CreditRollover" | "ReconciliationRecord" | "VendorInvoiceLineItem" | "EmailSyncLog" | "NetsuiteSyncLog" | "NetsuiteClientInvoice";
 type Action = "CREATE" | "UPDATE" | "DELETE";
 
 interface AuditLogParams {

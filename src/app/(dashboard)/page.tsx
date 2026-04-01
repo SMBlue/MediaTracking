@@ -41,7 +41,6 @@ async function getDashboardStats() {
     where: { status: "ACTIVE" },
     include: {
       invoiceAllocations: true,
-      spendEntries: true,
       changeOrders: true,
       creditsIn: true,
       creditsOut: true,
@@ -58,16 +57,6 @@ async function getDashboardStats() {
       sum +
       mba.invoiceAllocations.reduce(
         (allocSum, alloc) => allocSum + Number(alloc.amount),
-        0
-      ),
-    0
-  );
-
-  const totalSpend = activeMBAs.reduce(
-    (sum, mba) =>
-      sum +
-      mba.spendEntries.reduce(
-        (spendSum, entry) => spendSum + Number(entry.amount),
         0
       ),
     0
@@ -94,8 +83,6 @@ async function getDashboardStats() {
     clientCount,
     totalBudget,
     totalInvoiced,
-    totalSpend,
-    variance: totalSpend - totalInvoiced,
     remaining: totalBudget - totalInvoiced,
     clientPaidCount,
     totalClientPaid,
@@ -193,46 +180,8 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      {/* Variance & Client Payment */}
+      {/* Client Payment */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Total Spend</CardDescription>
-            <CardTitle className="text-3xl tabular-nums">
-              {formatCurrency(stats.totalSpend)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">
-              Logged platform spend
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Spend vs Invoiced</CardDescription>
-            <CardTitle className={`text-3xl tabular-nums ${
-              stats.variance !== 0
-                ? stats.variance > 0
-                  ? "text-bs-coral"
-                  : "text-bs-cobalt"
-                : ""
-            }`}>
-              {stats.variance >= 0 ? "+" : ""}{formatCurrency(stats.variance)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">
-              {stats.variance > 0
-                ? "Spend exceeds invoices"
-                : stats.variance < 0
-                ? "Invoices exceed spend"
-                : "Balanced"}
-            </p>
-          </CardContent>
-        </Card>
-
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Received from Clients</CardDescription>
@@ -383,8 +332,7 @@ export default async function DashboardPage() {
           <CardContent className="text-sm text-muted-foreground space-y-2">
             <p>1. Add your clients</p>
             <p>2. Create MBAs with budgets</p>
-            <p>3. Log spend by platform</p>
-            <p>4. Record invoices as they come in</p>
+            <p>3. Record invoices as they come in</p>
           </CardContent>
         </Card>
       </div>

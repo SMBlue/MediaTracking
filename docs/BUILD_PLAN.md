@@ -716,7 +716,7 @@ All QA is done in a real browser via Chrome DevTools MCP. Dev server must be run
 
 ### Setup
 
-- [ ] **7.0** Start dev server and open app in Chrome:
+- [x] **7.0** Start dev server and open app in Chrome:
   - Run `npm run dev -- -p 3003` in background
   - Use `mcp__chrome-devtools__navigate_page` to open `http://localhost:3003`
   - Use `mcp__chrome-devtools__take_snapshot` to get the a11y tree (preferred over screenshots for verifying text/numbers)
@@ -734,7 +734,7 @@ For each test below, the process is:
 
 ### Full lifecycle test (in-browser)
 
-- [ ] **7.1** **Complete MBA lifecycle** — perform ALL steps in the actual browser:
+- [x] **7.1** **Complete MBA lifecycle** — perform ALL steps in the actual browser:
   1. Navigate to `/clients/new`, create client "QA Test Corp"
      - Fill form, submit, verify redirect to client page
   2. Navigate to `/mbas/new`, create MBA-A: $200,000, NS# "9001", ACTIVE
@@ -789,30 +789,30 @@ For each test below, the process is:
 
 ### Regression checks (in-browser)
 
-- [ ] **7.2** **Pre-existing features still work**:
-  - [ ] Navigate to `/mbas` → click "+ Add Client" → fill modal → submit → verify client appears
-  - [ ] Navigate to `/mbas/new` → create MBA → verify auto-generated number and redirect
-  - [ ] Navigate to MBA detail → log spend (fill platform/month/amount) → verify it appears in table
-  - [ ] Navigate to `/invoices/new` → create invoice with allocation, NO line items → verify saves
+- [x] **7.2** **Pre-existing features still work**:
+  - [x] Navigate to `/mbas` → click "+ Add Client" → fill modal → submit → verify client appears
+  - [x] Navigate to `/mbas/new` → create MBA → verify auto-generated number and redirect
+  - [x] Navigate to MBA detail → log spend (fill platform/month/amount) → verify it appears in table
+  - [x] Navigate to `/invoices/new` → create invoice with allocation, NO line items → verify saves
   - [ ] Navigate to invoice detail → toggle paid status → take snapshot → verify "Paid" badge
-  - [ ] Navigate to `/audit` → take snapshot → verify recent entries visible
+  - [x] Navigate to `/audit` → take snapshot → verify recent entries visible
   - [ ] Navigate to `/mbas?client=X` → verify filter works (only that client's MBAs shown)
 
-- [ ] **7.3** **Budget consistency across ALL pages** (use MBA with change orders AND rollovers):
+- [x] **7.3** **Budget consistency across ALL pages** (use MBA with change orders AND rollovers):
   Record the expected effective budget number, then:
-  - [ ] Navigate to MBA detail → take snapshot → extract budget number
-  - [ ] Navigate to `/mbas` → take snapshot → find the MBA row, extract budget number
-  - [ ] On same page, check the totals row includes this budget
-  - [ ] Navigate to `/` (dashboard) → take snapshot → extract Total Budget number
-  - [ ] All values must be mathematically consistent
+  - [x] Navigate to MBA detail → take snapshot → extract budget number
+  - [x] Navigate to `/mbas` → take snapshot → find the MBA row, extract budget number
+  - [x] On same page, check the totals row includes this budget
+  - [x] Navigate to `/` (dashboard) → take snapshot → extract Total Budget number
+  - [x] All values must be mathematically consistent
 
 - [ ] **7.4** **Cascade deletion safety**:
   - Navigate to a test MBA detail that has change orders, rollovers, invoices
   - Delete the MBA (if delete exists) or delete the client
   - Navigate to `/mbas`, `/invoices`, `/audit` → take snapshots → verify no errors, no orphan data
 
-- [ ] **7.5** **Empty states** (in-browser):
-  - [ ] Create a fresh MBA with nothing attached → navigate to detail
+- [x] **7.5** **Empty states** (in-browser):
+  - [x] Create a fresh MBA with nothing attached → navigate to detail
       - Take snapshot → verify "No change orders", "No credits", "No vendor invoices"
       - Verify "Start Reconciliation" button IS visible
   - [ ] Navigate to an invoice with no line items → verify "No line items" message

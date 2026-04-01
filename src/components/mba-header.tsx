@@ -30,8 +30,6 @@ interface MBAHeaderProps {
   updateMBA: (formData: FormData) => Promise<void>;
   updateMBAStatus: (formData: FormData) => Promise<void>;
   updateNetsuiteProject: (formData: FormData) => Promise<void>;
-  startReconciliation: ((formData: FormData) => Promise<void>) | null;
-  remaining: number;
 }
 
 function formatDate(date: string) {
@@ -55,8 +53,6 @@ export function MBAHeader({
   updateMBA,
   updateMBAStatus,
   updateNetsuiteProject,
-  startReconciliation,
-  remaining,
 }: MBAHeaderProps) {
   const [editing, setEditing] = useState(false);
 
@@ -183,12 +179,12 @@ export function MBAHeader({
   }
 
   return (
-    <div className="flex items-center justify-between">
-      <div>
-        <div className="flex items-center gap-2">
+    <div className="flex items-start justify-between gap-4">
+      <div className="space-y-1">
+        <div className="flex items-center gap-3">
           <h1 className="text-3xl font-bold tracking-tight">{mba.mbaNumber}</h1>
           <span
-            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
               STATUS_STYLES[mba.status] || STATUS_STYLES.DRAFT
             }`}
           >
@@ -201,58 +197,46 @@ export function MBAHeader({
         <p className="text-sm text-muted-foreground">
           {formatDate(mba.startDate)} - {formatDate(mba.endDate)}
         </p>
-        <div className="flex items-center gap-2 mt-1">
-          <form action={updateNetsuiteProject} className="flex items-center gap-1">
+        <div className="flex items-center gap-3 pt-1">
+          <form action={updateNetsuiteProject} className="flex items-center gap-1.5">
             <input type="hidden" name="id" value={mba.id} />
             <span className="text-xs text-muted-foreground">NS Project:</span>
             <Input
               name="netsuiteProjectNumber"
               defaultValue={mba.netsuiteProjectNumber || ""}
               placeholder="Not set"
-              className="h-6 w-24 text-xs"
+              className="h-7 w-28 text-xs"
             />
-            <Button type="submit" variant="ghost" size="sm" className="h-6 text-xs px-2">
+            <Button type="submit" variant="ghost" size="sm" className="h-7 text-xs px-2">
               Save
             </Button>
           </form>
-        </div>
-        <Button
-          variant="link"
-          size="sm"
-          className="px-0 h-auto text-xs"
-          onClick={() => setEditing(true)}
-        >
-          Edit MBA details
-        </Button>
-      </div>
-      <div className="flex gap-2">
-        <form action={updateMBAStatus}>
-          <input type="hidden" name="id" value={mba.id} />
-          <Select name="status" defaultValue={mba.status}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="DRAFT">Draft</SelectItem>
-              <SelectItem value="ACTIVE">Active</SelectItem>
-              <SelectItem value="RECONCILING">Reconciling</SelectItem>
-              <SelectItem value="CLOSED">Closed</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button type="submit" variant="outline" size="sm" className="ml-2">
-            Update
+          <Button
+            variant="link"
+            size="sm"
+            className="px-0 h-auto text-xs"
+            onClick={() => setEditing(true)}
+          >
+            Edit MBA details
           </Button>
-        </form>
-        {startReconciliation && (
-          <form action={startReconciliation}>
-            <input type="hidden" name="mbaId" value={mba.id} />
-            <input type="hidden" name="finalBalance" value={remaining.toString()} />
-            <Button type="submit" variant="outline" size="sm">
-              Start Reconciliation
-            </Button>
-          </form>
-        )}
+        </div>
       </div>
+      <form action={updateMBAStatus} className="flex items-center gap-2">
+        <input type="hidden" name="id" value={mba.id} />
+        <Select name="status" defaultValue={mba.status}>
+          <SelectTrigger className="w-32">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="DRAFT">Draft</SelectItem>
+            <SelectItem value="ACTIVE">Active</SelectItem>
+            <SelectItem value="CLOSED">Closed</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button type="submit" variant="outline" size="sm">
+          Update
+        </Button>
+      </form>
     </div>
   );
 }

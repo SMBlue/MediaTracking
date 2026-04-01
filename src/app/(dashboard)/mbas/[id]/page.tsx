@@ -40,9 +40,6 @@ async function getMBA(id: string) {
     where: { id },
     include: {
       client: true,
-      spendEntries: {
-        orderBy: { period: "desc" },
-      },
       invoiceAllocations: {
         include: {
           invoice: {
@@ -64,7 +61,6 @@ async function getMBA(id: string) {
         include: { fromMba: { include: { client: true } } },
         orderBy: { createdAt: "desc" },
       },
-      reconciliation: true,
       netsuiteInvoices: {
         orderBy: { invoiceDate: "desc" },
       },
@@ -78,69 +74,7 @@ async function getMBA(id: string) {
   return mba;
 }
 
-async function addSpendEntry(formData: FormData) {
-  "use server";
 
-  const mbaId = formData.get("mbaId") as string;
-  const platform = formData.get("platform") as string;
-  const periodStr = formData.get("period") as string;
-  const amount = parseFloat(formData.get("amount") as string);
-  const notes = formData.get("notes") as string;
-
-  if (!mbaId || !platform || !periodStr || isNaN(amount)) {
-    throw new Error("All fields are required");
-  }
-
-  // Period should be first day of the month
-  const period = new Date(periodStr + "-01");
-
-  // Check if entry exists
-  const existing = await prisma.spendEntry.findUnique({
-    where: {
-      mbaId_platform_period: {
-        mbaId,
-        platform: platform as "GOOGLE_ADS" | "META" | "BING" | "TIKTOK" | "LINKEDIN" | "OTHER",
-        period,
-      },
-    },
-  });
-
-  const entry = await prisma.spendEntry.upsert({
-    where: {
-      mbaId_platform_period: {
-        mbaId,
-        platform: platform as "GOOGLE_ADS" | "META" | "BING" | "TIKTOK" | "LINKEDIN" | "OTHER",
-        period,
-      },
-    },
-    update: {
-      amount,
-      notes: notes || null,
-    },
-    create: {
-      mbaId,
-      platform: platform as "GOOGLE_ADS" | "META" | "BING" | "TIKTOK" | "LINKEDIN" | "OTHER",
-      period,
-      amount,
-      notes: notes || null,
-    },
-  });
-
-  await logAudit({
-    entityType: "SpendEntry",
-    entityId: entry.id,
-    action: existing ? "UPDATE" : "CREATE",
-    changes: existing
-      ? computeChanges(
-          { amount: existing.amount, notes: existing.notes },
-          { amount: entry.amount, notes: entry.notes },
-          ["amount", "notes"]
-        )
-      : undefined,
-  });
-
-  redirect(`/mbas/${mbaId}`);
-}
 
 async function updateMBAStatus(formData: FormData) {
   "use server";
@@ -365,128 +299,6 @@ async function deleteRollover(formData: FormData) {
   redirect(`/mbas/${currentMbaId}`);
 }
 
-async function startReconciliation(formData: FormData) {
-  "use server";
-
-  const mbaId = formData.get("mbaId") as string;
-  const finalBalance = parseFloat(formData.get("finalBalance") as string);
-
-  const mba = await prisma.mBA.findUnique({ where: { id: mbaId } });
-  if (!mba) throw new Error("MBA not found");
-
-  const record = await prisma.reconciliationRecord.create({
-    data: {
-      mbaId,
-      status: "PENDING",
-      finalBalance,
-    },
-  });
-
-  await prisma.mBA.update({
-    where: { id: mbaId },
-    data: { status: "RECONCILING" },
-  });
-
-  await Promise.all([
-    logAudit({ entityType: "ReconciliationRecord", entityId: record.id, action: "CREATE" }),
-    logAudit({
-      entityType: "MBA",
-      entityId: mbaId,
-      action: "UPDATE",
-      changes: { status: { old: mba.status, new: "RECONCILING" } },
-    }),
-  ]);
-
-  redirect(`/mbas/${mbaId}`);
-}
-
-async function updateReconciliation(formData: FormData) {
-  "use server";
-
-  const reconId = formData.get("reconId") as string;
-  const mbaId = formData.get("mbaId") as string;
-  const outcome = (formData.get("outcome") as string) || null;
-  const notes = (formData.get("notes") as string) || null;
-
-  await prisma.reconciliationRecord.update({
-    where: { id: reconId },
-    data: {
-      outcome: outcome as "REFUND" | "ROLLOVER" | "CLOSED_ZERO" | null,
-      notes,
-    },
-  });
-
-  await logAudit({
-    entityType: "ReconciliationRecord",
-    entityId: reconId,
-    action: "UPDATE",
-    changes: { outcome: { old: null, new: outcome }, notes: { old: null, new: notes } },
-  });
-
-  redirect(`/mbas/${mbaId}`);
-}
-
-async function advanceReconciliation(formData: FormData) {
-  "use server";
-
-  const reconId = formData.get("reconId") as string;
-  const mbaId = formData.get("mbaId") as string;
-  const currentStatus = formData.get("currentStatus") as string;
-
-  const recon = await prisma.reconciliationRecord.findUnique({ where: { id: reconId } });
-  if (!recon) throw new Error("Reconciliation not found");
-
-  if (currentStatus === "PENDING") {
-    await prisma.reconciliationRecord.update({
-      where: { id: reconId },
-      data: { status: "IN_REVIEW" },
-    });
-    await logAudit({
-      entityType: "ReconciliationRecord",
-      entityId: reconId,
-      action: "UPDATE",
-      changes: { status: { old: "PENDING", new: "IN_REVIEW" } },
-    });
-  } else if (currentStatus === "IN_REVIEW") {
-    if (!recon.outcome) throw new Error("Outcome must be set before confirming");
-    await prisma.reconciliationRecord.update({
-      where: { id: reconId },
-      data: { status: "CONFIRMED", confirmedAt: new Date() },
-    });
-    await logAudit({
-      entityType: "ReconciliationRecord",
-      entityId: reconId,
-      action: "UPDATE",
-      changes: { status: { old: "IN_REVIEW", new: "CONFIRMED" } },
-    });
-  } else if (currentStatus === "CONFIRMED") {
-    await prisma.reconciliationRecord.update({
-      where: { id: reconId },
-      data: { status: "CLOSED" },
-    });
-    await prisma.mBA.update({
-      where: { id: mbaId },
-      data: { status: "CLOSED" },
-    });
-    await Promise.all([
-      logAudit({
-        entityType: "ReconciliationRecord",
-        entityId: reconId,
-        action: "UPDATE",
-        changes: { status: { old: "CONFIRMED", new: "CLOSED" } },
-      }),
-      logAudit({
-        entityType: "MBA",
-        entityId: mbaId,
-        action: "UPDATE",
-        changes: { status: { old: "RECONCILING", new: "CLOSED" } },
-      }),
-    ]);
-  }
-
-  redirect(`/mbas/${mbaId}`);
-}
-
 async function updateMBA(formData: FormData) {
   "use server";
 
@@ -597,18 +409,6 @@ function formatDate(date: Date) {
   });
 }
 
-function formatMonth(date: Date) {
-  return new Date(date).toLocaleDateString("en-US", {
-    month: "short",
-    year: "numeric",
-  });
-}
-
-function getCurrentMonth() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-}
-
 function formatDateForInput(date: Date | null) {
   if (!date) return "";
   const d = new Date(date);
@@ -644,20 +444,8 @@ export default async function MBADetailPage({
     .reduce((sum, alloc) => sum + Number(alloc.amount), 0);
   const totalInvoiced = invoiceTotal - creditTotal;
 
-  const totalSpend = mba.spendEntries.reduce(
-    (sum, entry) => sum + Number(entry.amount),
-    0
-  );
   const remaining = effectiveBudget - totalInvoiced;
   const percentUsed = effectiveBudget > 0 ? (totalInvoiced / effectiveBudget) * 100 : 0;
-  const variance = totalSpend - totalInvoiced;
-
-  // Group spend by platform
-  const spendByPlatform = mba.spendEntries.reduce((acc, entry) => {
-    const platform = entry.platform;
-    acc[platform] = (acc[platform] || 0) + Number(entry.amount);
-    return acc;
-  }, {} as Record<string, number>);
 
   // Calculate running budget for change orders table
   let runningBudget = originalBudget;
@@ -684,276 +472,89 @@ export default async function MBADetailPage({
         updateMBA={updateMBA}
         updateMBAStatus={updateMBAStatus}
         updateNetsuiteProject={updateNetsuiteProject}
-        startReconciliation={
-          mba.status === "ACTIVE" && !mba.reconciliation
-            ? startReconciliation
-            : null
-        }
-        remaining={remaining}
       />
 
       {/* Budget Summary */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              {hasChangeOrders ? "Effective Budget" : "Budget"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold tabular-nums">{formatCurrency(effectiveBudget)}</p>
-            {(hasChangeOrders || hasRollovers) && (
-              <p className="text-xs text-muted-foreground">
-                {[
-                  `Original: ${formatCurrency(originalBudget)}`,
-                  changeOrderTotal !== 0 ? `${changeOrderTotal > 0 ? "+" : ""}Change Orders: ${formatCurrency(changeOrderTotal)}` : null,
-                  creditsInTotal > 0 ? `+ Credits In: ${formatCurrency(creditsInTotal)}` : null,
-                  creditsOutTotal > 0 ? `− Credits Out: ${formatCurrency(creditsOutTotal)}` : null,
-                ].filter(Boolean).join(" ")}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Vendor Invoiced
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold tabular-nums">{formatCurrency(totalInvoiced)}</p>
-            <p className="text-xs text-muted-foreground">
-              {Math.round(percentUsed)}% of budget (owed to platforms)
-              {creditTotal > 0 && (
-                <span className="text-bs-cobalt block">
-                  ({formatCurrency(invoiceTotal)} - {formatCurrency(creditTotal)} credits)
-                </span>
+      <div className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                {hasChangeOrders ? "Effective Budget" : "Budget"}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold tabular-nums">{formatCurrency(effectiveBudget)}</p>
+              {(hasChangeOrders || hasRollovers) && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {[
+                    `Original: ${formatCurrency(originalBudget)}`,
+                    changeOrderTotal !== 0 ? `${changeOrderTotal > 0 ? "+" : ""}CO: ${formatCurrency(changeOrderTotal)}` : null,
+                    creditsInTotal > 0 ? `+In: ${formatCurrency(creditsInTotal)}` : null,
+                    creditsOutTotal > 0 ? `−Out: ${formatCurrency(creditsOutTotal)}` : null,
+                  ].filter(Boolean).join(" · ")}
+                </p>
               )}
-            </p>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Remaining
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p
-              className={`text-2xl font-bold tabular-nums ${
-                remaining < 0 ? "text-bs-coral" : ""
-              }`}
-            >
-              {formatCurrency(remaining)}
-            </p>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Vendor Invoiced
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold tabular-nums">{formatCurrency(totalInvoiced)}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {Math.round(percentUsed)}% of budget
+                {creditTotal > 0 && (
+                  <span className="text-bs-cobalt">
+                    {" "}({formatCurrency(invoiceTotal)} − {formatCurrency(creditTotal)} credits)
+                  </span>
+                )}
+              </p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Spend vs Invoiced
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p
-              className={`text-2xl font-bold tabular-nums ${
-                variance !== 0
-                  ? variance > 0
-                    ? "text-bs-coral"
-                    : "text-bs-cobalt"
-                  : ""
-              }`}
-            >
-              {variance >= 0 ? "+" : ""}
-              {formatCurrency(variance)}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {variance > 0
-                ? "Spend exceeds invoices"
-                : variance < 0
-                ? "Invoices exceed spend"
-                : "Balanced"}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Progress Bar */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Budget Utilization</span>
-              <span>{Math.round(percentUsed)}%</span>
-            </div>
-            <div className="h-4 bg-bs-lavender rounded-full overflow-hidden">
-              <div
-                className={`h-full transition-all duration-500 ease-out ${
-                  percentUsed > 100
-                    ? "bg-bs-coral"
-                    : percentUsed > 80
-                    ? "bg-bs-yellow"
-                    : "bg-bs-teal"
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Remaining
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p
+                className={`text-2xl font-bold tabular-nums ${
+                  remaining < 0 ? "text-bs-coral" : ""
                 }`}
-                style={{ width: `${Math.min(percentUsed, 100)}%` }}
-              />
-            </div>
+              >
+                {formatCurrency(remaining)}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="space-y-1.5">
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>Budget Utilization</span>
+            <span>{Math.round(percentUsed)}%</span>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Reconciliation Panel */}
-      {mba.reconciliation && (
-        <Card className="border-l-4 border-l-bs-cobalt">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Reconciliation</span>
-              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                mba.reconciliation.status === "PENDING" ? "bg-bs-yellow text-bs-dark-gray" :
-                mba.reconciliation.status === "IN_REVIEW" ? "bg-bs-cobalt/10 text-bs-cobalt" :
-                mba.reconciliation.status === "CONFIRMED" ? "bg-bs-teal/20 text-bs-teal-dark" :
-                "bg-bs-dark-gray/10 text-bs-dark-gray"
-              }`}>
-                {mba.reconciliation.status.replace("_", " ")}
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Summary info */}
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-muted-foreground">Campaign End Date:</span>{" "}
-                {formatDate(mba.endDate)}
-                {(() => {
-                  const daysSinceEnd = Math.floor((Date.now() - new Date(mba.endDate).getTime()) / (1000 * 60 * 60 * 24));
-                  return daysSinceEnd > 0 ? (
-                    <span className="text-muted-foreground ml-1">({daysSinceEnd} days ago)</span>
-                  ) : null;
-                })()}
-              </div>
-              <div>
-                <span className="text-muted-foreground">Final Balance:</span>{" "}
-                <span className="font-medium">{formatCurrency(Number(mba.reconciliation.finalBalance || 0))}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Vendor Invoices:</span>{" "}
-                {mba.invoiceAllocations.length}
-              </div>
-            </div>
-
-            {/* Outcome selector + notes (editable when PENDING or IN_REVIEW) */}
-            {(mba.reconciliation.status === "PENDING" || mba.reconciliation.status === "IN_REVIEW") && (
-              <form action={updateReconciliation} className="space-y-3">
-                <input type="hidden" name="reconId" value={mba.reconciliation.id} />
-                <input type="hidden" name="mbaId" value={mba.id} />
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label htmlFor="recon-outcome" className="text-xs">Outcome</Label>
-                    <Select name="outcome" defaultValue={mba.reconciliation.outcome || ""}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select outcome..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ROLLOVER">Roll over to next MBA</SelectItem>
-                        <SelectItem value="REFUND">Refund client</SelectItem>
-                        <SelectItem value="CLOSED_ZERO">Close (zero balance)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="recon-notes" className="text-xs">Notes</Label>
-                    <Input
-                      id="recon-notes"
-                      name="notes"
-                      defaultValue={mba.reconciliation.notes || ""}
-                      placeholder="Reconciliation notes..."
-                    />
-                  </div>
-                </div>
-                <Button type="submit" size="sm" variant="outline">Save Changes</Button>
-              </form>
-            )}
-
-            {/* Show outcome and notes when CONFIRMED or CLOSED */}
-            {(mba.reconciliation.status === "CONFIRMED" || mba.reconciliation.status === "CLOSED") && (
-              <div className="text-sm space-y-1">
-                {mba.reconciliation.outcome && (
-                  <p>
-                    <span className="text-muted-foreground">Outcome:</span>{" "}
-                    <span className="font-medium">
-                      {mba.reconciliation.outcome === "ROLLOVER" ? "Roll over to next MBA" :
-                       mba.reconciliation.outcome === "REFUND" ? "Refund client" :
-                       "Close (zero balance)"}
-                    </span>
-                  </p>
-                )}
-                {mba.reconciliation.notes && (
-                  <p>
-                    <span className="text-muted-foreground">Notes:</span>{" "}
-                    {mba.reconciliation.notes}
-                  </p>
-                )}
-                {mba.reconciliation.confirmedAt && (
-                  <p>
-                    <span className="text-muted-foreground">Confirmed:</span>{" "}
-                    {formatDate(mba.reconciliation.confirmedAt)}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* ROLLOVER prompt when confirmed */}
-            {mba.reconciliation.status === "CONFIRMED" && mba.reconciliation.outcome === "ROLLOVER" && (
-              <div className="bg-bs-light-blue border border-bs-cobalt/20 rounded p-3">
-                <p className="text-sm text-bs-midnight">
-                  This MBA has <strong>{formatCurrency(Number(mba.reconciliation.finalBalance || 0))}</strong> remaining.
-                  Transfer to another MBA?
-                </p>
-                <p className="text-xs text-bs-cobalt mt-1">
-                  Use the Credits &amp; Rollovers section below to create the transfer, then return here to close.
-                </p>
-              </div>
-            )}
-
-            {/* REFUND info */}
-            {mba.reconciliation.status === "CONFIRMED" && mba.reconciliation.outcome === "REFUND" && (
-              <div className="bg-bs-light-blue border border-bs-cobalt/20 rounded p-3">
-                <p className="text-sm text-bs-midnight">
-                  Refund amount: <strong>{formatCurrency(Number(mba.reconciliation.finalBalance || 0))}</strong>
-                </p>
-                <p className="text-xs text-bs-cobalt mt-1">Record refund details in the notes field.</p>
-              </div>
-            )}
-
-            {/* Action buttons */}
-            {mba.reconciliation.status !== "CLOSED" && (
-              <form action={advanceReconciliation}>
-                <input type="hidden" name="reconId" value={mba.reconciliation.id} />
-                <input type="hidden" name="mbaId" value={mba.id} />
-                <input type="hidden" name="currentStatus" value={mba.reconciliation.status} />
-                {mba.reconciliation.status === "PENDING" && (
-                  <Button type="submit" size="sm">Mark In Review</Button>
-                )}
-                {mba.reconciliation.status === "IN_REVIEW" && (
-                  <Button type="submit" size="sm" disabled={!mba.reconciliation.outcome}>
-                    Confirm Reconciliation
-                  </Button>
-                )}
-                {mba.reconciliation.status === "CONFIRMED" && (
-                  <Button type="submit" size="sm" variant="destructive">Close MBA</Button>
-                )}
-              </form>
-            )}
-
-            {mba.reconciliation.status === "CLOSED" && (
-              <p className="text-sm text-bs-teal-dark font-medium">Reconciliation complete</p>
-            )}
-          </CardContent>
-        </Card>
-      )}
+          <div className="h-2.5 bg-bs-lavender rounded-full overflow-hidden">
+            <div
+              className={`h-full transition-all duration-500 ease-out ${
+                percentUsed > 100
+                  ? "bg-bs-coral"
+                  : percentUsed > 80
+                  ? "bg-bs-yellow"
+                  : "bg-bs-teal"
+              }`}
+              style={{ width: `${Math.min(percentUsed, 100)}%` }}
+            />
+          </div>
+        </div>
+      </div>
 
       {/* Change Orders */}
       <Card>
@@ -1376,99 +977,6 @@ export default async function MBADetailPage({
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Spend by Platform */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Spend by Platform</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {Object.keys(spendByPlatform).length === 0 ? (
-              <p className="text-muted-foreground text-sm">
-                No spend logged yet.
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {Object.entries(spendByPlatform).map(([platform, amount]) => (
-                  <div key={platform} className="flex justify-between">
-                    <span>
-                      {PLATFORMS.find((p) => p.value === platform)?.label ||
-                        platform}
-                    </span>
-                    <span className="font-medium">{formatCurrency(amount)}</span>
-                  </div>
-                ))}
-                <div className="border-t pt-2 flex justify-between font-bold">
-                  <span>Total</span>
-                  <span>{formatCurrency(totalSpend)}</span>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Add Spend Form */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Log Spend</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form action={addSpendEntry} className="space-y-4">
-              <input type="hidden" name="mbaId" value={mba.id} />
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="platform">Platform</Label>
-                  <Select name="platform" required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PLATFORMS.map((p) => (
-                        <SelectItem key={p.value} value={p.value}>
-                          {p.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="period">Month</Label>
-                  <Input
-                    id="period"
-                    name="period"
-                    type="month"
-                    defaultValue={getCurrentMonth()}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="amount">Amount</Label>
-                <Input
-                  id="amount"
-                  name="amount"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="notes">Notes (optional)</Label>
-                <Input id="notes" name="notes" placeholder="Any notes..." />
-              </div>
-
-              <Button type="submit">Add Spend</Button>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Vendor Invoices - what vendors bill us */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
@@ -1545,47 +1053,6 @@ export default async function MBADetailPage({
         </CardContent>
       </Card>
 
-      {/* Spend Entries */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Spend Entries</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {mba.spendEntries.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              No spend entries yet.
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Period</TableHead>
-                  <TableHead>Platform</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead>Notes</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {mba.spendEntries.map((entry) => (
-                  <TableRow key={entry.id}>
-                    <TableCell>{formatMonth(entry.period)}</TableCell>
-                    <TableCell>
-                      {PLATFORMS.find((p) => p.value === entry.platform)?.label ||
-                        entry.platform}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatCurrency(Number(entry.amount))}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {entry.notes || "-"}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }

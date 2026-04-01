@@ -32,7 +32,6 @@ async function getMBAs(clientId?: string) {
           invoice: true,
         },
       },
-      spendEntries: true,
       changeOrders: true,
       creditsIn: true,
       creditsOut: true,
@@ -72,10 +71,6 @@ export default async function MBAsPage({
   const totals = mbas.reduce(
     (acc, mba) => {
       const budget = calculateEffectiveBudget(mba);
-      const spend = mba.spendEntries.reduce(
-        (sum, entry) => sum + Number(entry.amount),
-        0
-      );
       const invoiceTotal = mba.invoiceAllocations
         .filter((alloc) => alloc.invoice.type === "INVOICE")
         .reduce((sum, alloc) => sum + Number(alloc.amount), 0);
@@ -87,12 +82,11 @@ export default async function MBAsPage({
 
       return {
         budget: acc.budget + budget,
-        spend: acc.spend + spend,
         invoiced: acc.invoiced + invoiced,
         remaining: acc.remaining + remaining,
       };
     },
-    { budget: 0, spend: 0, invoiced: 0, remaining: 0 }
+    { budget: 0, invoiced: 0, remaining: 0 }
   );
 
   return (
@@ -157,7 +151,6 @@ export default async function MBAsPage({
                 <TableHead>NS #</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead className="text-right">Budget</TableHead>
-                <TableHead className="text-right">Media Spend</TableHead>
                 <TableHead className="text-right">Vendor Invoiced</TableHead>
                 <TableHead className="text-right">Remaining</TableHead>
                 <TableHead>Status</TableHead>
@@ -168,10 +161,6 @@ export default async function MBAsPage({
             <TableBody>
               {mbas.map((mba) => {
                 const budget = calculateEffectiveBudget(mba);
-                const spend = mba.spendEntries.reduce(
-                  (sum, entry) => sum + Number(entry.amount),
-                  0
-                );
                 const invoiceTotal = mba.invoiceAllocations
                   .filter((alloc) => alloc.invoice.type === "INVOICE")
                   .reduce((sum, alloc) => sum + Number(alloc.amount), 0);
@@ -190,9 +179,6 @@ export default async function MBAsPage({
                     <TableCell>{mba.name}</TableCell>
                     <TableCell className="text-right tabular-nums">
                       {formatCurrency(budget)}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatCurrency(spend)}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {formatCurrency(invoiced)}
@@ -251,9 +237,6 @@ export default async function MBAsPage({
                   </TableCell>
                   <TableCell className="text-right font-medium tabular-nums">
                     {formatCurrency(totals.budget)}
-                  </TableCell>
-                  <TableCell className="text-right font-medium tabular-nums">
-                    {formatCurrency(totals.spend)}
                   </TableCell>
                   <TableCell className="text-right font-medium tabular-nums">
                     {formatCurrency(totals.invoiced)}
