@@ -145,10 +145,9 @@ export async function syncFromNetsuite(): Promise<NetsuiteSyncResult> {
       const mbaId = projectToMba.get(projectNumber);
       if (!mbaId) continue;
 
-      const totalInvoiced = projectInvoices.reduce(
-        (sum, inv) => sum + inv.amount,
-        0
-      );
+      const totalPaid = projectInvoices
+        .filter((inv) => inv.status === "paidInFull")
+        .reduce((sum, inv) => sum + inv.amount, 0);
       const allPaid = projectInvoices.every(
         (inv) => inv.status === "paidInFull"
       );
@@ -166,15 +165,15 @@ export async function syncFromNetsuite(): Promise<NetsuiteSyncResult> {
       // Only update if status actually changed
       if (
         mba.clientPaid !== allPaid ||
-        Number(mba.clientPaidAmount || 0) !== totalInvoiced
+        Number(mba.clientPaidAmount || 0) !== totalPaid
       ) {
         try {
           await prisma.mBA.update({
             where: { id: mbaId },
             data: {
               clientPaid: allPaid,
-              clientPaidAmount: totalInvoiced,
-              clientPaidDate: allPaid && latestPaidDate
+              clientPaidAmount: totalPaid,
+              clientPaidDate: latestPaidDate
                 ? new Date(latestPaidDate)
                 : null,
             },

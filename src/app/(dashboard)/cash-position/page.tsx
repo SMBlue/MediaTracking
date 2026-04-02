@@ -67,10 +67,8 @@ async function getCashPositionData(): Promise<{
       0
     );
     const remaining = effectiveBudget - vendorInvoiced;
-    const clientPaidAmt = mba.clientPaid
-      ? Number(mba.clientPaidAmount || mba.budget)
-      : 0;
-    const outstandingAmt = mba.clientPaid ? 0 : effectiveBudget;
+    const clientPaidAmt = Number(mba.clientPaidAmount || 0);
+    const outstandingAmt = effectiveBudget - clientPaidAmt;
 
     existing.mbaCount += 1;
     existing.effectiveBudget += effectiveBudget;

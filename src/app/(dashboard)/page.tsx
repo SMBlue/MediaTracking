@@ -68,14 +68,16 @@ async function getDashboardStats() {
     (mba) => new Date(mba.endDate) < sixtyDaysAgo
   ).length;
 
-  // Client payment stats
+  // Client payment stats — payments can come in chunks, so track totals
   const clientPaidCount = activeMBAs.filter((mba) => mba.clientPaid).length;
-  const totalClientPaid = activeMBAs
-    .filter((mba) => mba.clientPaid)
-    .reduce((sum, mba) => sum + Number(mba.clientPaidAmount || mba.budget), 0);
-  const totalOutstanding = activeMBAs
-    .filter((mba) => !mba.clientPaid)
-    .reduce((sum, mba) => sum + calculateEffectiveBudget(mba), 0);
+  const clientPartialCount = activeMBAs.filter(
+    (mba) => !mba.clientPaid && Number(mba.clientPaidAmount || 0) > 0
+  ).length;
+  const totalClientPaid = activeMBAs.reduce(
+    (sum, mba) => sum + Number(mba.clientPaidAmount || 0),
+    0
+  );
+  const totalOutstanding = totalBudget - totalClientPaid;
 
   return {
     mbaCount,
@@ -85,6 +87,7 @@ async function getDashboardStats() {
     totalInvoiced,
     remaining: totalBudget - totalInvoiced,
     clientPaidCount,
+    clientPartialCount,
     totalClientPaid,
     totalOutstanding,
     needsReconCount,
@@ -191,7 +194,8 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <p className="text-xs text-muted-foreground">
-              {stats.clientPaidCount} of {stats.activeCount} MBAs paid by client
+              {stats.clientPaidCount} of {stats.activeCount} MBAs fully paid
+              {stats.clientPartialCount > 0 && `, ${stats.clientPartialCount} partial`}
             </p>
           </CardContent>
         </Card>

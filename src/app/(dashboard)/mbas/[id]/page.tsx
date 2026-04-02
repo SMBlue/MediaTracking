@@ -887,10 +887,21 @@ export default async function MBADetailPage({
                   </TableRow>
                 ))}
                 <TableRow className="font-bold">
-                  <TableCell colSpan={2}>Total</TableCell>
+                  <TableCell colSpan={2}>Total Invoiced</TableCell>
                   <TableCell className="text-right">
                     {formatCurrency(
                       mba.netsuiteInvoices.reduce((sum, inv) => sum + Number(inv.amount), 0)
+                    )}
+                  </TableCell>
+                  <TableCell></TableCell>
+                </TableRow>
+                <TableRow className="font-bold text-bs-teal-dark">
+                  <TableCell colSpan={2}>Total Paid</TableCell>
+                  <TableCell className="text-right">
+                    {formatCurrency(
+                      mba.netsuiteInvoices
+                        .filter((inv) => inv.status === "paidInFull")
+                        .reduce((sum, inv) => sum + Number(inv.amount), 0)
                     )}
                   </TableCell>
                   <TableCell></TableCell>
@@ -912,6 +923,10 @@ export default async function MBADetailPage({
             {mba.clientPaid ? (
               <span className="text-sm font-normal px-2 py-1 bg-bs-teal/20 text-bs-teal-dark rounded-full">
                 Received
+              </span>
+            ) : Number(mba.clientPaidAmount || 0) > 0 ? (
+              <span className="text-sm font-normal px-2 py-1 bg-bs-yellow text-bs-dark-gray rounded-full">
+                Partial &middot; {formatCurrency(Number(mba.clientPaidAmount))} of {formatCurrency(effectiveBudget)}
               </span>
             ) : (
               <span className="text-sm font-normal px-2 py-1 bg-bs-coral/15 text-bs-coral-dark rounded-full">

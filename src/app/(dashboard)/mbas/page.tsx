@@ -213,6 +213,10 @@ export default async function MBAsPage({
                         <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-bs-teal/20 text-bs-teal-dark">
                           Paid
                         </span>
+                      ) : Number(mba.clientPaidAmount || 0) > 0 ? (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-bs-yellow text-bs-dark-gray">
+                          Partial &middot; {formatCurrency(Number(mba.clientPaidAmount))}
+                        </span>
                       ) : (
                         <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-bs-coral/15 text-bs-coral-dark">
                           Outstanding
