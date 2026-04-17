@@ -148,17 +148,17 @@ export default async function DashboardPage() {
           label="Vendor Invoiced"
           value={formatCurrency(stats.totalInvoiced)}
           subtitle={stats.totalBudget > 0
-            ? `${Math.round((stats.totalInvoiced / stats.totalBudget) * 100)}% of budget (owed to platforms)`
+            ? `${Math.round((stats.totalInvoiced / stats.totalBudget) * 100)}% of budget invoiced`
             : "No budget set"}
           icon={Receipt}
-          accentColor="coral"
+          accentColor="neutral"
         />
         <KPICard
           label="Remaining"
           value={formatCurrency(stats.remaining)}
           subtitle="Available to spend"
           icon={DollarSign}
-          accentColor="cobalt"
+          accentColor="teal"
         />
       </div>
       </div>

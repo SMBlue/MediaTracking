@@ -1060,9 +1060,9 @@ export default async function MBADetailPage({
                     </TableCell>
                     <TableCell>
                       {alloc.invoice.isPaid ? (
-                        <span className="text-bs-teal-dark">Paid</span>
+                        <Badge variant="paid" dot>Paid</Badge>
                       ) : (
-                        <span className="text-bs-coral">Unpaid</span>
+                        <Badge variant="unpaid" dot>Unpaid</Badge>
                       )}
                     </TableCell>
                   </TableRow>

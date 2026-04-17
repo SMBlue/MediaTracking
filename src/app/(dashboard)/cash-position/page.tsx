@@ -279,10 +279,10 @@ export default async function CashPositionPage() {
                     <TableCell className="text-right tabular-nums">
                       {fmt(totals.remaining)}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums text-bs-teal-dark">
+                    <TableCell className={`text-right tabular-nums ${totals.clientPaid > 0 ? "text-bs-teal-dark" : ""}`}>
                       {fmt(totals.clientPaid)}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums text-bs-coral">
+                    <TableCell className={`text-right tabular-nums ${totals.outstanding > 0 ? "text-bs-coral" : ""}`}>
                       {fmt(totals.outstanding)}
                     </TableCell>
                     <TableCell
