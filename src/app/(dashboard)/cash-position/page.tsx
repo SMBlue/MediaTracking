@@ -1,6 +1,10 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
+import { DollarSign, Receipt, HandCoins, TrendingUp, TrendingDown } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
+import { KPICard } from "@/components/kpi-card";
+import { AlertBanner } from "@/components/ui/alert-banner";
 import { prisma } from "@/lib/db";
 import { calculateEffectiveBudget } from "@/lib/budget";
 import {
@@ -127,83 +131,47 @@ export default async function CashPositionPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Cash Position</h1>
-        <p className="text-muted-foreground mt-1">
-          Financial overview across all active MBAs, grouped by client
-        </p>
-      </div>
+      <PageHeader
+        title="Cash Position"
+        description="Financial overview across all active MBAs, grouped by client"
+      />
 
       {/* Summary cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Total Effective Budget</CardDescription>
-            <CardTitle className="text-3xl tabular-nums">
-              {fmt(totals.effectiveBudget)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">
-              {totals.mbaCount} active MBAs across {byClient.length} clients
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Owed to Vendors</CardDescription>
-            <CardTitle className="text-3xl tabular-nums text-bs-coral">
-              {fmt(totals.vendorInvoiced)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">
-              {pct(totals.vendorInvoiced, totals.effectiveBudget)} of budget
-              invoiced by platforms
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Received from Clients</CardDescription>
-            <CardTitle className="text-3xl tabular-nums text-bs-teal-dark">
-              {fmt(totals.clientPaid)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">
-              {pct(totals.clientPaid, totals.effectiveBudget)} of budget
-              collected
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Net Cash Flow</CardDescription>
-            <CardTitle
-              className={`text-3xl tabular-nums ${
-                netCashFlow >= 0 ? "text-bs-teal-dark" : "text-bs-coral"
-              }`}
-            >
-              {netCashFlow >= 0 ? "+" : ""}
-              {fmt(netCashFlow)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">
-              Client payments minus vendor invoices
-            </p>
-          </CardContent>
-        </Card>
+        <KPICard
+          label="Total Effective Budget"
+          value={fmt(totals.effectiveBudget)}
+          subtitle={`${totals.mbaCount} active MBAs across ${byClient.length} clients`}
+          icon={DollarSign}
+          accentColor="cobalt"
+        />
+        <KPICard
+          label="Owed to Vendors"
+          value={fmt(totals.vendorInvoiced)}
+          subtitle={`${pct(totals.vendorInvoiced, totals.effectiveBudget)} of budget invoiced by platforms`}
+          icon={Receipt}
+          accentColor="coral"
+        />
+        <KPICard
+          label="Received from Clients"
+          value={fmt(totals.clientPaid)}
+          subtitle={`${pct(totals.clientPaid, totals.effectiveBudget)} of budget collected`}
+          icon={HandCoins}
+          accentColor="teal"
+        />
+        <KPICard
+          label="Net Cash Flow"
+          value={`${netCashFlow >= 0 ? "+" : ""}${fmt(netCashFlow)}`}
+          subtitle="Client payments minus vendor invoices"
+          icon={netCashFlow >= 0 ? TrendingUp : TrendingDown}
+          accentColor={netCashFlow >= 0 ? "teal" : "coral"}
+        />
       </div>
 
       {/* Outstanding summary */}
       {totals.outstanding > 0 && (
-        <div className="bg-bs-yellow/40 border border-bs-yellow rounded-lg p-4">
-          <p className="text-bs-midnight">
+        <AlertBanner variant="warning">
+          <p>
             <strong>{fmt(totals.outstanding)}</strong> outstanding from clients
             across{" "}
             {byClient.filter((c) => c.outstanding > 0).length} client
@@ -211,7 +179,7 @@ export default async function CashPositionPage() {
               ? "s"
               : ""}
           </p>
-        </div>
+        </AlertBanner>
       )}
 
       {/* Client breakdown table */}

@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { redirect } from "next/navigation";
+import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -118,7 +119,16 @@ export default async function NewMBAPage({
     .split("T")[0];
 
   return (
-    <div className="max-w-lg mx-auto">
+    <div className="max-w-lg mx-auto space-y-6">
+      <PageHeader
+        title="New MBA"
+        description={`MBA Number: ${suggestedNumber}`}
+        breadcrumbs={[
+          { label: "Dashboard", href: "/" },
+          { label: "MBAs", href: "/mbas" },
+          { label: "New MBA" },
+        ]}
+      />
       <Card>
         <CardHeader>
           <CardTitle>New MBA</CardTitle>

@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
+import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { prisma } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
 
@@ -100,23 +102,20 @@ export default async function ClientDetailPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4 text-sm">
-        <Link href="/mbas" className="text-muted-foreground hover:text-foreground">
-          &larr; Back to MBAs
-        </Link>
-      </div>
-
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{client.name}</h1>
-          <p className="text-muted-foreground">
-            Created {new Date(client.createdAt).toLocaleDateString()}
-          </p>
-        </div>
-        <Button asChild>
-          <Link href={`/mbas/new?clientId=${client.id}`}>+ New MBA</Link>
-        </Button>
-      </div>
+      <PageHeader
+        title={client.name}
+        description={`Created ${new Date(client.createdAt).toLocaleDateString()}`}
+        breadcrumbs={[
+          { label: "Dashboard", href: "/" },
+          { label: "MBAs", href: "/mbas" },
+          { label: client.name },
+        ]}
+        actions={
+          <Button asChild>
+            <Link href={`/mbas/new?clientId=${client.id}`}>+ New MBA</Link>
+          </Button>
+        }
+      />
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
@@ -184,17 +183,20 @@ export default async function ClientDetailPage({
                     <TableCell>{mba.name}</TableCell>
                     <TableCell>{formatCurrency(mba.budget)}</TableCell>
                     <TableCell>
-                      <span
-                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      <Badge
+                        variant={
                           mba.status === "ACTIVE"
-                            ? "bg-bs-teal/20 text-bs-teal-dark"
+                            ? "active"
                             : mba.status === "CLOSED"
-                            ? "bg-bs-dark-gray/10 text-bs-dark-gray"
-                            : "bg-bs-yellow text-bs-dark-gray"
-                        }`}
+                            ? "closed"
+                            : mba.status === "RECONCILING"
+                            ? "reconciling"
+                            : "draft"
+                        }
+                        dot
                       >
                         {mba.status}
-                      </span>
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <Button asChild variant="ghost" size="sm">

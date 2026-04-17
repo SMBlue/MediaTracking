@@ -1,7 +1,10 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
+import { FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/empty-state";
+import { PageHeader } from "@/components/page-header";
 import {
   Table,
   TableBody,
@@ -13,6 +16,8 @@ import {
 } from "@/components/ui/table";
 import { prisma } from "@/lib/db";
 import { calculateEffectiveBudget } from "@/lib/budget";
+import { AlertBanner } from "@/components/ui/alert-banner";
+import { Badge } from "@/components/ui/badge";
 import { AddClientModal } from "@/components/add-client-modal";
 import { ClientFilter } from "./client-filter";
 
@@ -91,28 +96,26 @@ export default async function MBAsPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">MBAs</h1>
-          <p className="text-muted-foreground mt-1">
-            Media Buying Agreements and their budgets
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <AddClientModal>
-            <Button variant="outline">+ Add Client</Button>
-          </AddClientModal>
-          <Button asChild>
-            <Link
-              href={
-                clientId ? `/mbas/new?clientId=${clientId}` : "/mbas/new"
-              }
-            >
-              + New MBA
-            </Link>
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="MBAs"
+        description="Media Buying Agreements and their budgets"
+        actions={
+          <div className="flex gap-2">
+            <AddClientModal>
+              <Button variant="outline">+ Add Client</Button>
+            </AddClientModal>
+            <Button asChild>
+              <Link
+                href={
+                  clientId ? `/mbas/new?clientId=${clientId}` : "/mbas/new"
+                }
+              >
+                + New MBA
+              </Link>
+            </Button>
+          </div>
+        }
+      />
 
       {/* Client Filter */}
       <div className="flex items-center gap-4">
@@ -125,22 +128,24 @@ export default async function MBAsPage({
       </div>
 
       {needsReconCount > 0 && (
-        <div className="bg-bs-light-blue border border-bs-cobalt/20 rounded-lg p-4">
-          <p className="text-bs-midnight">
+        <AlertBanner variant="info">
+          <p>
             <strong>{needsReconCount}</strong> MBA{needsReconCount > 1 ? "s" : ""} may need reconciliation (ended 60+ days ago)
           </p>
-        </div>
+        </AlertBanner>
       )}
 
       {mbas.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <p>No MBAs yet{selectedClient ? ` for ${selectedClient.name}` : ""}.</p>
-          <p className="mt-2">
-            <Link href="/mbas/new" className="text-bs-cobalt hover:underline">
-              Create your first MBA
-            </Link>
-          </p>
-        </div>
+        <EmptyState
+          icon={FileText}
+          title={`No MBAs yet${selectedClient ? ` for ${selectedClient.name}` : ""}`}
+          description="Create your first media buying agreement to get started."
+          action={
+            <Button asChild>
+              <Link href="/mbas/new">+ New MBA</Link>
+            </Button>
+          }
+        />
       ) : (
         <div className="border rounded-lg bg-card overflow-hidden">
           <Table>
@@ -194,33 +199,19 @@ export default async function MBAsPage({
                       {formatCurrency(remaining)}
                     </TableCell>
                     <TableCell>
-                      <span
-                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                          mba.status === "ACTIVE"
-                            ? "bg-bs-teal/20 text-bs-teal-dark"
-                            : mba.status === "CLOSED"
-                            ? "bg-bs-dark-gray/10 text-bs-dark-gray"
-                            : mba.status === "RECONCILING"
-                            ? "bg-bs-cobalt/10 text-bs-cobalt"
-                            : "bg-bs-yellow text-bs-dark-gray"
-                        }`}
-                      >
+                      <Badge variant={mba.status === "ACTIVE" ? "active" : mba.status === "CLOSED" ? "closed" : mba.status === "RECONCILING" ? "reconciling" : "draft"} dot>
                         {mba.status}
-                      </span>
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       {mba.clientPaid ? (
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-bs-teal/20 text-bs-teal-dark">
-                          Paid
-                        </span>
+                        <Badge variant="paid" dot>Paid</Badge>
                       ) : Number(mba.clientPaidAmount || 0) > 0 ? (
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-bs-yellow text-bs-dark-gray">
+                        <Badge variant="partial" dot>
                           Partial &middot; {formatCurrency(Number(mba.clientPaidAmount))}
-                        </span>
+                        </Badge>
                       ) : (
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-bs-coral/15 text-bs-coral-dark">
-                          Outstanding
-                        </span>
+                        <Badge variant="outstanding" dot>Outstanding</Badge>
                       )}
                     </TableCell>
                     <TableCell>

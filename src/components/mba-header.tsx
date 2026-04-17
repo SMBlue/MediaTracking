@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,11 +41,11 @@ function formatDate(date: string) {
   });
 }
 
-const STATUS_STYLES: Record<string, string> = {
-  ACTIVE: "bg-bs-teal/20 text-bs-teal-dark",
-  CLOSED: "bg-bs-dark-gray/10 text-bs-dark-gray",
-  RECONCILING: "bg-bs-cobalt/10 text-bs-cobalt",
-  DRAFT: "bg-bs-yellow text-bs-dark-gray",
+const STATUS_TO_VARIANT: Record<string, "active" | "closed" | "reconciling" | "draft"> = {
+  ACTIVE: "active",
+  CLOSED: "closed",
+  RECONCILING: "reconciling",
+  DRAFT: "draft",
 };
 
 export function MBAHeader({
@@ -183,13 +184,9 @@ export function MBAHeader({
       <div className="space-y-1">
         <div className="flex items-center gap-3">
           <h1 className="text-3xl font-bold tracking-tight">{mba.mbaNumber}</h1>
-          <span
-            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-              STATUS_STYLES[mba.status] || STATUS_STYLES.DRAFT
-            }`}
-          >
+          <Badge variant={STATUS_TO_VARIANT[mba.status] ?? "draft"} dot>
             {mba.status}
-          </span>
+          </Badge>
         </div>
         <p className="text-muted-foreground">
           {mba.clientName} &middot; {mba.name}

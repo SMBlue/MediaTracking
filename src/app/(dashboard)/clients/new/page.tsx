@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +33,15 @@ async function createClient(formData: FormData) {
 
 export default function NewClientPage() {
   return (
-    <div className="max-w-lg mx-auto">
+    <div className="max-w-lg mx-auto space-y-6">
+      <PageHeader
+        title="New Client"
+        breadcrumbs={[
+          { label: "Dashboard", href: "/" },
+          { label: "MBAs", href: "/mbas" },
+          { label: "New Client" },
+        ]}
+      />
       <Card>
         <CardHeader>
           <CardTitle>New Client</CardTitle>

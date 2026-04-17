@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +13,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { AlertBanner } from "@/components/ui/alert-banner";
+import { Badge } from "@/components/ui/badge";
 import { prisma } from "@/lib/db";
 import { LineItemAssignments } from "@/components/line-item-assignments";
 import {
@@ -101,44 +104,21 @@ export default async function InvoiceDetailPage({
 
   function confidenceBadge(confidence: number | null) {
     if (confidence === null) return null;
-    if (confidence >= 0.8) {
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-bs-teal/20 text-bs-teal-dark">
-          High ({Math.round(confidence * 100)}%)
-        </span>
-      );
-    }
-    if (confidence >= 0.5) {
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-bs-yellow text-bs-dark-gray">
-          Medium ({Math.round(confidence * 100)}%)
-        </span>
-      );
-    }
+    const variant = confidence >= 0.8 ? "high" : confidence >= 0.5 ? "medium" : "low";
+    const label = confidence >= 0.8 ? "High" : confidence >= 0.5 ? "Medium" : "Low";
     return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-bs-coral/15 text-bs-coral-dark">
-        Low ({Math.round(confidence * 100)}%)
-      </span>
+      <Badge variant={variant} dot>
+        {label} ({Math.round(confidence * 100)}%)
+      </Badge>
     );
   }
 
   return (
     <div className="space-y-6">
       {invoice.status === "DRAFT" && (
-        <div className="bg-bs-yellow/30 border border-bs-yellow rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-bs-midnight font-medium">
-                Draft Invoice — Pending Review
-              </p>
-              <p className="text-bs-dark-gray text-sm">
-                This invoice was auto-parsed from email. Review the details and
-                confirm or discard.
-                {invoice.parseConfidence !== null && (
-                  <> Parse confidence: {confidenceBadge(invoice.parseConfidence)}</>
-                )}
-              </p>
-            </div>
+        <AlertBanner
+          variant="warning"
+          action={
             <div className="flex gap-2">
               <form action={confirmDraft}>
                 <input type="hidden" name="id" value={invoice.id} />
@@ -151,20 +131,28 @@ export default async function InvoiceDetailPage({
                 </Button>
               </form>
             </div>
-          </div>
-        </div>
+          }
+        >
+          <p className="font-medium">Draft Invoice — Pending Review</p>
+          <p className="text-bs-dark-gray text-sm">
+            This invoice was auto-parsed from email. Review the details and
+            confirm or discard.
+            {invoice.parseConfidence !== null && (
+              <> Parse confidence: {confidenceBadge(invoice.parseConfidence)}</>
+            )}
+          </p>
+        </AlertBanner>
       )}
 
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">{invoice.invoiceNumber}</h1>
-          <p className="text-muted-foreground">
-            {PLATFORMS.find((p) => p.value === invoice.vendor)?.label ||
-              invoice.vendor}{" "}
-            &middot; {formatDate(invoice.invoiceDate)}
-          </p>
-        </div>
-        <div className="flex gap-2">
+      <PageHeader
+        title={invoice.invoiceNumber}
+        description={`${PLATFORMS.find((p) => p.value === invoice.vendor)?.label || invoice.vendor} \u00b7 ${formatDate(invoice.invoiceDate)}`}
+        breadcrumbs={[
+          { label: "Dashboard", href: "/" },
+          { label: "Vendor Invoices", href: "/invoices" },
+          { label: invoice.invoiceNumber },
+        ]}
+        actions={
           <form action={togglePaidStatus}>
             <input type="hidden" name="id" value={invoice.id} />
             <input
@@ -179,8 +167,8 @@ export default async function InvoiceDetailPage({
               {invoice.isPaid ? "Mark as Unpaid" : "Mark as Paid"}
             </Button>
           </form>
-        </div>
-      </div>
+        }
+      />
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
@@ -241,9 +229,9 @@ export default async function InvoiceDetailPage({
           <CardTitle className="flex items-center gap-2">
             Line Items
             {invoice.lineItems.length > 0 && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-bs-lavender text-bs-dark-gray">
+              <Badge variant="info">
                 {invoice.lineItems.length}
-              </span>
+              </Badge>
             )}
           </CardTitle>
         </CardHeader>

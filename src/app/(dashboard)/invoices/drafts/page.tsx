@@ -2,6 +2,9 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Inbox } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
+import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -13,6 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { prisma } from "@/lib/db";
+import { Badge } from "@/components/ui/badge";
 import { logAudit } from "@/lib/audit";
 
 const PLATFORMS = [
@@ -106,24 +110,12 @@ function formatDate(date: Date) {
 
 function confidenceBadge(confidence: number | null) {
   if (confidence === null) return null;
-  if (confidence >= 0.8) {
-    return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-bs-teal/20 text-bs-teal-dark">
-        High ({Math.round(confidence * 100)}%)
-      </span>
-    );
-  }
-  if (confidence >= 0.5) {
-    return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-bs-yellow text-bs-dark-gray">
-        Medium ({Math.round(confidence * 100)}%)
-      </span>
-    );
-  }
+  const variant = confidence >= 0.8 ? "high" : confidence >= 0.5 ? "medium" : "low";
+  const label = confidence >= 0.8 ? "High" : confidence >= 0.5 ? "Medium" : "Low";
   return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-bs-coral/15 text-bs-coral-dark">
-      Low ({Math.round(confidence * 100)}%)
-    </span>
+    <Badge variant={variant} dot>
+      {label} ({Math.round(confidence * 100)}%)
+    </Badge>
   );
 }
 
@@ -136,37 +128,36 @@ export default async function DraftInvoicesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Draft Invoices</h1>
-          <p className="text-muted-foreground">
-            Review auto-parsed invoices from email before confirming
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {highConfidenceCount > 0 && (
-            <form action={confirmAllHighConfidence}>
-              <Button type="submit" variant="outline">
-                Confirm All High-Confidence ({highConfidenceCount})
-              </Button>
-            </form>
-          )}
-          <Button asChild variant="ghost">
-            <Link href="/invoices">Back to Invoices</Link>
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Draft Invoices"
+        description="Review auto-parsed invoices from email before confirming"
+        breadcrumbs={[
+          { label: "Dashboard", href: "/" },
+          { label: "Vendor Invoices", href: "/invoices" },
+          { label: "Drafts" },
+        ]}
+        actions={
+          <>
+            {highConfidenceCount > 0 && (
+              <form action={confirmAllHighConfidence}>
+                <Button type="submit" variant="outline">
+                  Confirm All High-Confidence ({highConfidenceCount})
+                </Button>
+              </form>
+            )}
+            <Button asChild variant="ghost">
+              <Link href="/invoices">Back to Invoices</Link>
+            </Button>
+          </>
+        }
+      />
 
       {drafts.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            <p>No draft invoices pending review.</p>
-            <p className="mt-2 text-sm">
-              Draft invoices are created automatically when emails with PDF
-              attachments are processed.
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={Inbox}
+          title="No draft invoices pending review"
+          description="Draft invoices are created automatically when emails with PDF attachments are processed."
+        />
       ) : (
         <div className="space-y-4">
           {drafts.map((invoice) => (

@@ -1,7 +1,11 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { BarChart3, DollarSign, FileText, Receipt, HandCoins, AlertCircle, Plus, Building2 } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
+import { KPICard } from "@/components/kpi-card";
+import { AlertBanner } from "@/components/ui/alert-banner";
+import { Card, CardContent, CardTitle, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { prisma } from "@/lib/db";
 import { calculateEffectiveBudget } from "@/lib/budget";
@@ -112,118 +116,83 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
-            Overview of your media buying agreements
-          </p>
-        </div>
-        <Button asChild>
-          <Link href="/mbas/new">+ New MBA</Link>
-        </Button>
-      </div>
+      <PageHeader
+        title="Dashboard"
+        description="Overview of your media buying agreements"
+        actions={
+          <Button asChild>
+            <Link href="/mbas/new">+ New MBA</Link>
+          </Button>
+        }
+      />
 
       {/* Budget Overview */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Active MBAs</CardDescription>
-            <CardTitle className="text-3xl tabular-nums">{stats.activeCount}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">
-              {stats.mbaCount} total MBAs
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Total Budget</CardDescription>
-            <CardTitle className="text-3xl tabular-nums">
-              {formatCurrency(stats.totalBudget)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">
-              Across active MBAs
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Vendor Invoiced</CardDescription>
-            <CardTitle className="text-3xl tabular-nums">
-              {formatCurrency(stats.totalInvoiced)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">
-              {stats.totalBudget > 0
-                ? `${Math.round((stats.totalInvoiced / stats.totalBudget) * 100)}% of budget (owed to platforms)`
-                : "No budget set"}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Remaining</CardDescription>
-            <CardTitle className="text-3xl tabular-nums text-bs-cobalt">
-              {formatCurrency(stats.remaining)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">
-              Available to spend
-            </p>
-          </CardContent>
-        </Card>
+      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Budget Overview</h2>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 -mt-4">
+        <KPICard
+          label="Active MBAs"
+          value={stats.activeCount}
+          subtitle={`${stats.mbaCount} total MBAs`}
+          icon={BarChart3}
+          accentColor="cobalt"
+        />
+        <KPICard
+          label="Total Budget"
+          value={formatCurrency(stats.totalBudget)}
+          subtitle="Across active MBAs"
+          icon={DollarSign}
+          accentColor="cobalt"
+        />
+        <KPICard
+          label="Vendor Invoiced"
+          value={formatCurrency(stats.totalInvoiced)}
+          subtitle={stats.totalBudget > 0
+            ? `${Math.round((stats.totalInvoiced / stats.totalBudget) * 100)}% of budget (owed to platforms)`
+            : "No budget set"}
+          icon={Receipt}
+          accentColor="coral"
+        />
+        <KPICard
+          label="Remaining"
+          value={formatCurrency(stats.remaining)}
+          subtitle="Available to spend"
+          icon={DollarSign}
+          accentColor="cobalt"
+        />
       </div>
 
       {/* Client Payment */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Received from Clients</CardDescription>
-            <CardTitle className="text-3xl tabular-nums text-bs-teal-dark">
-              {formatCurrency(stats.totalClientPaid)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">
-              {stats.clientPaidCount} of {stats.activeCount} MBAs fully paid
-              {stats.clientPartialCount > 0 && `, ${stats.clientPartialCount} partial`}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Outstanding from Clients</CardDescription>
-            <CardTitle className="text-3xl tabular-nums text-bs-coral">
-              {formatCurrency(stats.totalOutstanding)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">
-              Awaiting payment from clients
-            </p>
-          </CardContent>
-        </Card>
+      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Client Payments</h2>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 -mt-4">
+        <KPICard
+          label="Received from Clients"
+          value={formatCurrency(stats.totalClientPaid)}
+          subtitle={`${stats.clientPaidCount} of ${stats.activeCount} MBAs fully paid${stats.clientPartialCount > 0 ? `, ${stats.clientPartialCount} partial` : ""}`}
+          icon={HandCoins}
+          accentColor="teal"
+        />
+        <KPICard
+          label="Outstanding from Clients"
+          value={formatCurrency(stats.totalOutstanding)}
+          subtitle="Awaiting payment from clients"
+          icon={AlertCircle}
+          accentColor="coral"
+        />
       </div>
 
       {stats.needsReconCount > 0 && (
-        <div className="bg-bs-light-blue border border-bs-cobalt/20 rounded-lg p-4">
-          <p className="text-bs-midnight">
+        <AlertBanner
+          variant="info"
+          action={
+            <Button asChild variant="link" className="p-0 h-auto text-bs-cobalt">
+              <Link href="/mbas">View MBAs</Link>
+            </Button>
+          }
+        >
+          <p>
             <strong>{stats.needsReconCount}</strong> active MBA{stats.needsReconCount > 1 ? "s" : ""} may need reconciliation (ended 60+ days ago)
           </p>
-          <Button asChild variant="link" className="p-0 h-auto text-bs-cobalt">
-            <Link href="/mbas">View MBAs</Link>
-          </Button>
-        </div>
+        </AlertBanner>
       )}
 
       {/* Email Ingestion Status */}
@@ -311,34 +280,41 @@ export default async function DashboardPage() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Button asChild variant="outline" className="w-full justify-start hover:border-bs-cobalt/30 hover:bg-bs-lavender transition-colors duration-150">
-              <Link href="/mbas/new">Create new MBA</Link>
-            </Button>
-            <Button asChild variant="outline" className="w-full justify-start hover:border-bs-cobalt/30 hover:bg-bs-lavender transition-colors duration-150">
-              <Link href="/clients/new">Add new client</Link>
-            </Button>
-            <Button asChild variant="outline" className="w-full justify-start hover:border-bs-cobalt/30 hover:bg-bs-lavender transition-colors duration-150">
-              <Link href="/invoices/new">Record invoice</Link>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Getting Started</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground space-y-2">
-            <p>1. Add your clients</p>
-            <p>2. Create MBAs with budgets</p>
-            <p>3. Record invoices as they come in</p>
-          </CardContent>
-        </Card>
+      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Quick Actions</h2>
+      <div className="grid gap-4 md:grid-cols-3 -mt-4">
+        <Link href="/mbas/new" className="group">
+          <div className="bg-card rounded-xl border border-border/60 shadow-[var(--shadow-card)] p-5 flex items-center gap-4 transition-all duration-150 hover:shadow-[var(--shadow-card-hover)] hover:-translate-y-0.5">
+            <div className="size-10 rounded-lg bg-bs-cobalt/10 flex items-center justify-center shrink-0 group-hover:bg-bs-cobalt/15 transition-colors duration-150">
+              <Plus className="size-5 text-bs-cobalt" />
+            </div>
+            <div>
+              <p className="font-medium text-sm">Create new MBA</p>
+              <p className="text-xs text-muted-foreground">Set up a new media buying agreement</p>
+            </div>
+          </div>
+        </Link>
+        <Link href="/clients/new" className="group">
+          <div className="bg-card rounded-xl border border-border/60 shadow-[var(--shadow-card)] p-5 flex items-center gap-4 transition-all duration-150 hover:shadow-[var(--shadow-card-hover)] hover:-translate-y-0.5">
+            <div className="size-10 rounded-lg bg-bs-cobalt/10 flex items-center justify-center shrink-0 group-hover:bg-bs-cobalt/15 transition-colors duration-150">
+              <Building2 className="size-5 text-bs-cobalt" />
+            </div>
+            <div>
+              <p className="font-medium text-sm">Add new client</p>
+              <p className="text-xs text-muted-foreground">Register a new client organization</p>
+            </div>
+          </div>
+        </Link>
+        <Link href="/invoices/new" className="group">
+          <div className="bg-card rounded-xl border border-border/60 shadow-[var(--shadow-card)] p-5 flex items-center gap-4 transition-all duration-150 hover:shadow-[var(--shadow-card-hover)] hover:-translate-y-0.5">
+            <div className="size-10 rounded-lg bg-bs-cobalt/10 flex items-center justify-center shrink-0 group-hover:bg-bs-cobalt/15 transition-colors duration-150">
+              <FileText className="size-5 text-bs-cobalt" />
+            </div>
+            <div>
+              <p className="font-medium text-sm">Record invoice</p>
+              <p className="text-xs text-muted-foreground">Log a vendor invoice manually</p>
+            </div>
+          </div>
+        </Link>
       </div>
     </div>
   );

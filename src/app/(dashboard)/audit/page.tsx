@@ -1,5 +1,8 @@
 export const dynamic = "force-dynamic";
 
+import { ClipboardList } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
+import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -9,6 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { prisma } from "@/lib/db";
 
 async function getAuditLogs() {
@@ -49,16 +53,12 @@ function formatValue(val: unknown): string {
   return String(val);
 }
 
-function getActionColor(action: string) {
+function getActionVariant(action: string) {
   switch (action) {
-    case "CREATE":
-      return "bg-bs-teal/20 text-bs-teal-dark";
-    case "UPDATE":
-      return "bg-bs-cobalt/10 text-bs-cobalt";
-    case "DELETE":
-      return "bg-bs-coral/15 text-bs-coral-dark";
-    default:
-      return "bg-bs-dark-gray/10 text-bs-dark-gray";
+    case "CREATE": return "create" as const;
+    case "UPDATE": return "update" as const;
+    case "DELETE": return "delete" as const;
+    default: return "info" as const;
   }
 }
 
@@ -67,12 +67,10 @@ export default async function AuditLogPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Audit Log</h1>
-        <p className="text-muted-foreground mt-1">
-          Track all changes made to your data
-        </p>
-      </div>
+      <PageHeader
+        title="Audit Log"
+        description="Track all changes made to your data"
+      />
 
       <Card>
         <CardHeader>
@@ -80,9 +78,11 @@ export default async function AuditLogPage() {
         </CardHeader>
         <CardContent>
           {logs.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              No activity recorded yet.
-            </p>
+            <EmptyState
+              icon={ClipboardList}
+              title="No activity recorded yet"
+              description="Changes to your data will appear here as they happen."
+            />
           ) : (
             <Table>
               <TableHeader>
@@ -101,13 +101,9 @@ export default async function AuditLogPage() {
                       {formatDate(log.createdAt)}
                     </TableCell>
                     <TableCell>
-                      <span
-                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getActionColor(
-                          log.action
-                        )}`}
-                      >
+                      <Badge variant={getActionVariant(log.action)}>
                         {log.action}
-                      </span>
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <span className="font-medium">{log.entityType}</span>

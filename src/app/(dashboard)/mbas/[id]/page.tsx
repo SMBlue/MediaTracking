@@ -25,6 +25,7 @@ import { prisma } from "@/lib/db";
 import { logAudit, computeChanges } from "@/lib/audit";
 import { calculateEffectiveBudget } from "@/lib/budget";
 import { MBAHeader } from "@/components/mba-header";
+import { Badge } from "@/components/ui/badge";
 
 const PLATFORMS = [
   { value: "GOOGLE_ADS", label: "Google Ads" },
@@ -562,9 +563,9 @@ export default async function MBADetailPage({
           <CardTitle className="flex items-center gap-2">
             Change Orders
             {mba.changeOrders.length > 0 && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-bs-dark-gray/10 text-bs-dark-gray">
+              <Badge variant="info">
                 {mba.changeOrders.length}
-              </span>
+              </Badge>
             )}
           </CardTitle>
         </CardHeader>
@@ -691,9 +692,9 @@ export default async function MBADetailPage({
                           +{formatCurrency(Number(cr.amount))}
                         </TableCell>
                         <TableCell>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-bs-dark-gray/10 text-bs-dark-gray">
+                          <Badge variant="info">
                             {ROLLOVER_TYPE_LABELS[cr.type] || cr.type}
-                          </span>
+                          </Badge>
                         </TableCell>
                         <TableCell>{formatDate(cr.createdAt)}</TableCell>
                         <TableCell className="text-muted-foreground">{cr.description || "-"}</TableCell>
@@ -749,9 +750,9 @@ export default async function MBADetailPage({
                           -{formatCurrency(Number(cr.amount))}
                         </TableCell>
                         <TableCell>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-bs-dark-gray/10 text-bs-dark-gray">
+                          <Badge variant="info">
                             {ROLLOVER_TYPE_LABELS[cr.type] || cr.type}
-                          </span>
+                          </Badge>
                         </TableCell>
                         <TableCell>{formatDate(cr.createdAt)}</TableCell>
                         <TableCell className="text-muted-foreground">{cr.description || "-"}</TableCell>
@@ -852,9 +853,9 @@ export default async function MBADetailPage({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               NetSuite Client Invoices
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-bs-dark-gray/10 text-bs-dark-gray">
+              <Badge variant="info">
                 {mba.netsuiteInvoices.length}
-              </span>
+              </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -875,13 +876,11 @@ export default async function MBADetailPage({
                     <TableCell className="text-right">{formatCurrency(Number(inv.amount))}</TableCell>
                     <TableCell>
                       {inv.status === "paidInFull" ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-bs-teal/20 text-bs-teal-dark">
-                          Paid
-                        </span>
+                        <Badge variant="paid">Paid</Badge>
                       ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-bs-coral/15 text-bs-coral-dark">
+                        <Badge variant="outstanding">
                           {inv.status === "open" ? "Open" : inv.status}
-                        </span>
+                        </Badge>
                       )}
                     </TableCell>
                   </TableRow>
@@ -1022,13 +1021,9 @@ export default async function MBADetailPage({
                   <TableRow key={alloc.id}>
                     <TableCell>
                       {alloc.invoice.type === "CREDIT_NOTE" ? (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-bs-cobalt/10 text-bs-cobalt">
-                          Credit
-                        </span>
+                        <Badge variant="credit">Credit</Badge>
                       ) : (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-bs-dark-gray/10 text-bs-dark-gray">
-                          Invoice
-                        </span>
+                        <Badge variant="invoice">Invoice</Badge>
                       )}
                     </TableCell>
                     <TableCell className="font-medium">

@@ -20,6 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { bulkAssignLineItems } from "@/app/(dashboard)/invoices/[id]/actions";
 
 interface LineItem {
@@ -57,24 +58,12 @@ function formatCurrency(amount: number) {
 
 function confidenceBadge(confidence: number | null) {
   if (confidence === null) return null;
-  if (confidence >= 0.8) {
-    return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-bs-teal/20 text-bs-teal-dark">
-        High ({Math.round(confidence * 100)}%)
-      </span>
-    );
-  }
-  if (confidence >= 0.5) {
-    return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-bs-yellow text-bs-dark-gray">
-        Medium ({Math.round(confidence * 100)}%)
-      </span>
-    );
-  }
+  const variant = confidence >= 0.8 ? "high" : confidence >= 0.5 ? "medium" : "low";
+  const label = confidence >= 0.8 ? "High" : confidence >= 0.5 ? "Medium" : "Low";
   return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-bs-coral/15 text-bs-coral-dark">
-      Low ({Math.round(confidence * 100)}%)
-    </span>
+    <Badge variant={variant} dot>
+      {label} ({Math.round(confidence * 100)}%)
+    </Badge>
   );
 }
 

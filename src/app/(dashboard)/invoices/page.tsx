@@ -1,7 +1,10 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
+import { Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/empty-state";
+import { PageHeader } from "@/components/page-header";
 import {
   Table,
   TableBody,
@@ -10,6 +13,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { AlertBanner } from "@/components/ui/alert-banner";
+import { Badge } from "@/components/ui/badge";
 import { prisma } from "@/lib/db";
 
 const PLATFORMS = [
@@ -77,59 +82,61 @@ export default async function InvoicesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Vendor Invoices</h1>
-          <p className="text-muted-foreground mt-1">
-            Track invoices from platforms (Google, Meta, etc.) and payment status
-          </p>
-        </div>
-        <Button asChild>
-          <Link href="/invoices/new">+ New Invoice</Link>
-        </Button>
-      </div>
+      <PageHeader
+        title="Vendor Invoices"
+        description="Track invoices from platforms (Google, Meta, etc.) and payment status"
+        actions={
+          <Button asChild>
+            <Link href="/invoices/new">+ New Invoice</Link>
+          </Button>
+        }
+      />
 
       {draftCount > 0 && (
-        <div className="bg-bs-yellow/50 border border-bs-yellow rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <p className="text-bs-midnight">
-              <strong>{draftCount}</strong> draft invoice{draftCount !== 1 ? "s" : ""} pending review
-            </p>
+        <AlertBanner
+          variant="warning"
+          action={
             <Button asChild variant="outline" size="sm">
               <Link href="/invoices/drafts">Review Drafts</Link>
             </Button>
-          </div>
-        </div>
+          }
+        >
+          <p>
+            <strong>{draftCount}</strong> draft invoice{draftCount !== 1 ? "s" : ""} pending review
+          </p>
+        </AlertBanner>
       )}
 
       {(totalUnpaid > 0 || totalCredits > 0) && (
         <div className="flex gap-4">
           {totalUnpaid > 0 && (
-            <div className="bg-bs-coral/10 border border-bs-coral/30 rounded-lg p-4 flex-1">
-              <p className="text-bs-midnight">
+            <AlertBanner variant="error" className="flex-1">
+              <p>
                 <strong>{formatCurrency(totalUnpaid)}</strong> owed to vendors
               </p>
-            </div>
+            </AlertBanner>
           )}
           {totalCredits > 0 && (
-            <div className="bg-bs-light-blue border border-bs-cobalt/20 rounded-lg p-4 flex-1">
-              <p className="text-bs-midnight">
+            <AlertBanner variant="info" className="flex-1">
+              <p>
                 <strong>{formatCurrency(totalCredits)}</strong> in credit notes
               </p>
-            </div>
+            </AlertBanner>
           )}
         </div>
       )}
 
       {invoices.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <p>No invoices yet.</p>
-          <p className="mt-2">
-            <Link href="/invoices/new" className="text-bs-cobalt hover:underline">
-              Record your first invoice
-            </Link>
-          </p>
-        </div>
+        <EmptyState
+          icon={Receipt}
+          title="No invoices yet"
+          description="Record your first vendor invoice to start tracking spend."
+          action={
+            <Button asChild>
+              <Link href="/invoices/new">+ New Invoice</Link>
+            </Button>
+          }
+        />
       ) : (
         <div className="border rounded-lg bg-card overflow-hidden">
           <Table>
@@ -159,13 +166,9 @@ export default async function InvoicesPage() {
                   <TableRow key={invoice.id}>
                     <TableCell>
                       {invoice.type === "CREDIT_NOTE" ? (
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-bs-cobalt/10 text-bs-cobalt">
-                          Credit
-                        </span>
+                        <Badge variant="credit">Credit</Badge>
                       ) : (
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-bs-dark-gray/10 text-bs-dark-gray">
-                          Invoice
-                        </span>
+                        <Badge variant="invoice">Invoice</Badge>
                       )}
                     </TableCell>
                     <TableCell className="font-medium">
@@ -207,13 +210,9 @@ export default async function InvoicesPage() {
                     </TableCell>
                     <TableCell>
                       {invoice.isPaid ? (
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-bs-teal/20 text-bs-teal-dark">
-                          Paid
-                        </span>
+                        <Badge variant="paid" dot>Paid</Badge>
                       ) : (
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-bs-coral/15 text-bs-coral-dark">
-                          Unpaid
-                        </span>
+                        <Badge variant="unpaid" dot>Unpaid</Badge>
                       )}
                     </TableCell>
                     <TableCell>
