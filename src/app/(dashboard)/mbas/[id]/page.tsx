@@ -25,6 +25,7 @@ import { prisma } from "@/lib/db";
 import { logAudit, computeChanges } from "@/lib/audit";
 import { calculateEffectiveBudget } from "@/lib/budget";
 import { MBAHeader } from "@/components/mba-header";
+import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 
 const PLATFORMS = [
@@ -455,6 +456,15 @@ export default async function MBADetailPage({
 
   return (
     <div className="space-y-6">
+      <PageHeader
+        title=""
+        breadcrumbs={[
+          { label: "Dashboard", href: "/" },
+          { label: "MBAs", href: "/mbas" },
+          { label: mba.mbaNumber },
+        ]}
+        className="pb-0 border-b-0"
+      />
       <MBAHeader
         mba={{
           id: mba.id,

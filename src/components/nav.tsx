@@ -33,23 +33,23 @@ export function Nav({ draftCount = 0 }: { draftCount?: number }) {
   return (
     <nav className="bg-bs-midnight border-b border-bs-medium-blue shadow-[var(--shadow-nav)]">
       <div className="container mx-auto px-4">
-        <div className="flex h-12 items-center justify-between">
-          <div className="flex items-center gap-8">
-            <Link href="/" className="flex items-center gap-2">
+        <div className="flex h-12 items-center justify-between gap-2">
+          <div className="flex items-center gap-4 md:gap-8 min-w-0 overflow-x-auto">
+            <Link href="/" className="flex items-center gap-2 shrink-0">
               <div className="size-6 rounded bg-bs-cobalt flex items-center justify-center">
                 <span className="text-white text-xs font-bold">M</span>
               </div>
-              <span className="font-bold text-sm text-white tracking-tight">
+              <span className="font-bold text-sm text-white tracking-tight hidden sm:inline">
                 MBA Tracker
               </span>
             </Link>
-            <div className="flex gap-0.5">
+            <div className="flex gap-0.5 shrink-0">
               {navItems.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "text-sm font-medium px-3 py-1.5 rounded-md transition-colors duration-150 relative",
+                    "text-xs md:text-sm font-medium px-2 md:px-3 py-1.5 rounded-md transition-colors duration-150 relative whitespace-nowrap",
                     isActive(item)
                       ? "bg-white/[0.12] text-white"
                       : "text-bs-lavender/70 hover:text-white hover:bg-white/[0.06]"
@@ -69,7 +69,7 @@ export function Nav({ draftCount = 0 }: { draftCount?: number }) {
             variant="ghost"
             size="sm"
             onClick={handleSignOut}
-            className="text-bs-lavender/60 hover:text-white hover:bg-white/[0.06] h-8 text-xs"
+            className="text-bs-lavender/60 hover:text-white hover:bg-white/[0.06] h-8 text-xs shrink-0"
           >
             Sign out
           </Button>

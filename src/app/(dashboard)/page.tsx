@@ -127,8 +127,9 @@ export default async function DashboardPage() {
       />
 
       {/* Budget Overview */}
+      <div className="space-y-3">
       <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Budget Overview</h2>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 -mt-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <KPICard
           label="Active MBAs"
           value={stats.activeCount}
@@ -160,10 +161,12 @@ export default async function DashboardPage() {
           accentColor="cobalt"
         />
       </div>
+      </div>
 
       {/* Client Payment */}
+      <div className="space-y-3">
       <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Client Payments</h2>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 -mt-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <KPICard
           label="Received from Clients"
           value={formatCurrency(stats.totalClientPaid)}
@@ -178,6 +181,7 @@ export default async function DashboardPage() {
           icon={AlertCircle}
           accentColor="coral"
         />
+      </div>
       </div>
 
       {stats.needsReconCount > 0 && (
@@ -210,7 +214,7 @@ export default async function DashboardPage() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-4 gap-4 text-sm">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div>
                 <p className="text-muted-foreground text-xs uppercase tracking-wider font-medium">Last Sync</p>
                 <p className="font-medium mt-1">
@@ -256,7 +260,7 @@ export default async function DashboardPage() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-4 gap-4 text-sm">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div>
                 <p className="text-muted-foreground text-xs uppercase tracking-wider font-medium">Last Sync</p>
                 <p className="font-medium mt-1">
@@ -280,8 +284,9 @@ export default async function DashboardPage() {
         </CardContent>
       </Card>
 
+      <div className="space-y-3">
       <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Quick Actions</h2>
-      <div className="grid gap-4 md:grid-cols-3 -mt-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <Link href="/mbas/new" className="group">
           <div className="bg-card rounded-xl border border-border/60 shadow-[var(--shadow-card)] p-5 flex items-center gap-4 transition-all duration-150 hover:shadow-[var(--shadow-card-hover)] hover:-translate-y-0.5">
             <div className="size-10 rounded-lg bg-bs-cobalt/10 flex items-center justify-center shrink-0 group-hover:bg-bs-cobalt/15 transition-colors duration-150">
@@ -315,6 +320,7 @@ export default async function DashboardPage() {
             </div>
           </div>
         </Link>
+      </div>
       </div>
     </div>
   );
