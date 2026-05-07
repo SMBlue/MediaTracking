@@ -25,7 +25,7 @@ export function PageHeader({
   className,
 }: PageHeaderProps) {
   return (
-    <div className={cn("border-b border-border/60 pb-6", className)}>
+    <div className={cn("pb-2", className)}>
       {breadcrumbs && breadcrumbs.length > 0 && (
         <nav className="flex items-center gap-1.5 text-sm text-muted-foreground mb-3">
           {breadcrumbs.map((crumb, i) => (
@@ -34,7 +34,7 @@ export function PageHeader({
               {crumb.href ? (
                 <Link
                   href={crumb.href}
-                  className="hover:text-foreground transition-colors duration-150"
+                  className="hover:text-foreground transition-colors"
                 >
                   {crumb.label}
                 </Link>
@@ -46,11 +46,17 @@ export function PageHeader({
         </nav>
       )}
       {(title || description || actions) && (
-        <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="flex items-end justify-between gap-4 flex-wrap">
           <div className="min-w-0">
-            {title && <h1 className="text-2xl font-bold tracking-tight">{title}</h1>}
+            {title && (
+              <h1 className="text-[28px] font-semibold tracking-tight leading-tight">
+                {title}
+              </h1>
+            )}
             {description && (
-              <p className="text-muted-foreground mt-1">{description}</p>
+              <p className="text-muted-foreground text-sm mt-1.5">
+                {description}
+              </p>
             )}
           </div>
           {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}

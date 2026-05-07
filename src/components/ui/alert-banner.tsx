@@ -5,14 +5,14 @@ import { AlertCircle, AlertTriangle, CheckCircle2, Info } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const alertBannerVariants = cva(
-  "flex items-start gap-3 rounded-lg border p-4",
+  "flex items-center gap-3 rounded-xl border bg-card px-4 py-3 text-sm",
   {
     variants: {
       variant: {
-        info: "bg-bs-light-blue border-bs-cobalt/20",
-        warning: "bg-bs-yellow/40 border-bs-yellow",
-        error: "bg-bs-coral/10 border-bs-coral/30",
-        success: "bg-bs-teal/15 border-bs-teal/30",
+        info: "border-border",
+        warning: "border-bs-yellow",
+        error: "border-bs-coral/30",
+        success: "border-bs-teal/40",
       },
     },
     defaultVariants: {
@@ -53,8 +53,8 @@ function AlertBanner({
 
   return (
     <div className={cn(alertBannerVariants({ variant }), className)} {...props}>
-      <Icon className={cn("size-5 shrink-0 mt-0.5", iconColor)} />
-      <div className="flex-1 text-bs-midnight">{children}</div>
+      <Icon className={cn("size-4 shrink-0", iconColor)} />
+      <div className="flex-1 text-foreground">{children}</div>
       {action && <div className="shrink-0">{action}</div>}
     </div>
   )

@@ -1,4 +1,4 @@
-import { Nav } from "@/components/nav";
+import { SidebarNav } from "@/components/sidebar-nav";
 import { prisma } from "@/lib/db";
 
 async function getDraftCount() {
@@ -17,9 +17,11 @@ export default async function DashboardLayout({
   const draftCount = await getDraftCount();
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Nav draftCount={draftCount} />
-      <main className="flex-1 container mx-auto px-6 py-8">{children}</main>
+    <div className="min-h-screen flex bg-background">
+      <SidebarNav draftCount={draftCount} />
+      <main className="flex-1 min-w-0 overflow-x-auto">
+        <div className="max-w-[1400px] mx-auto px-8 py-8">{children}</div>
+      </main>
     </div>
   );
 }

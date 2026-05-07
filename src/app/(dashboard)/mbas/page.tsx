@@ -147,19 +147,19 @@ export default async function MBAsPage({
           }
         />
       ) : (
-        <div className="border rounded-lg bg-card overflow-hidden">
+        <div className="border border-border rounded-2xl bg-card overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="hover:bg-transparent">
                 {!clientId && <TableHead>Client</TableHead>}
-                <TableHead>MBA #</TableHead>
-                <TableHead>NS #</TableHead>
+                <TableHead>MBA</TableHead>
+                <TableHead>NS</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead className="text-right">Budget</TableHead>
-                <TableHead className="text-right">Vendor Invoiced</TableHead>
+                <TableHead className="text-right">Invoiced</TableHead>
                 <TableHead className="text-right">Remaining</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Client Paid Us</TableHead>
+                <TableHead>Client Paid</TableHead>
                 <TableHead></TableHead>
               </TableRow>
             </TableHeader>
@@ -225,19 +225,19 @@ export default async function MBAsPage({
             </TableBody>
             {mbas.length > 1 && (
               <TableFooter>
-                <TableRow>
+                <TableRow className="hover:bg-transparent">
                   {!clientId && <TableCell />}
-                  <TableCell colSpan={3} className="font-medium">
-                    TOTALS ({mbas.length} MBAs)
+                  <TableCell colSpan={3} className="font-medium text-muted-foreground">
+                    Totals ({mbas.length} MBAs)
                   </TableCell>
-                  <TableCell className="text-right font-medium tabular-nums">
+                  <TableCell className="text-right font-semibold tabular-nums">
                     {formatCurrency(totals.budget)}
                   </TableCell>
-                  <TableCell className="text-right font-medium tabular-nums">
+                  <TableCell className="text-right font-semibold tabular-nums">
                     {formatCurrency(totals.invoiced)}
                   </TableCell>
                   <TableCell
-                    className={`text-right font-medium tabular-nums ${
+                    className={`text-right font-semibold tabular-nums ${
                       totals.remaining < 0 ? "text-bs-coral" : ""
                     }`}
                   >

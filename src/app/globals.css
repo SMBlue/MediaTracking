@@ -59,34 +59,35 @@
   --color-bs-dark-gray: #333333;
   --color-bs-brand-gray: #666666;
 
-  /* Layered shadow system (midnight-tinted for brand cohesion) */
-  --shadow-card: 0 1px 3px rgba(2,0,48,0.06), 0 1px 2px rgba(2,0,48,0.04);
-  --shadow-card-hover: 0 4px 12px rgba(2,0,48,0.08), 0 2px 4px rgba(2,0,48,0.04);
-  --shadow-nav: 0 1px 3px rgba(2,0,48,0.1), 0 1px 2px rgba(2,0,48,0.06);
-  --shadow-dropdown: 0 10px 25px rgba(2,0,48,0.12), 0 4px 10px rgba(2,0,48,0.06);
+  /* Softer shadow system — barely-there at rest, lift on hover */
+  --shadow-card: 0 1px 2px rgba(2,0,48,0.03), 0 1px 1px rgba(2,0,48,0.02);
+  --shadow-card-hover: 0 4px 16px rgba(2,0,48,0.06), 0 2px 4px rgba(2,0,48,0.03);
+  --shadow-nav: 0 1px 0 rgba(2,0,48,0.04);
+  --shadow-dropdown: 0 12px 32px rgba(2,0,48,0.10), 0 4px 12px rgba(2,0,48,0.05);
 }
 
 :root {
-  --radius: 0.625rem;
-  /* Blue State branded light mode */
-  --background: #f4f3fa;
-  --foreground: #020030;
+  --radius: 0.875rem;
+  /* Refreshed light mode — neutral background, brand color reserved for emphasis */
+  --background: #fafafa;
+  --foreground: #0a0a14;
   --card: #FFFFFF;
-  --card-foreground: #020030;
+  --card-foreground: #0a0a14;
   --popover: #FFFFFF;
-  --popover-foreground: #020030;
-  --primary: #2700F2;
+  --popover-foreground: #0a0a14;
+  /* Primary button uses bs-cobalt but slightly desaturated for less visual noise */
+  --primary: #271897;
   --primary-foreground: #FFFFFF;
-  --secondary: #EFEEFA;
-  --secondary-foreground: #020030;
-  --muted: #EFEEFA;
-  --muted-foreground: #666666;
-  --accent: #EFEEFA;
-  --accent-foreground: #020030;
+  --secondary: #f1f1f4;
+  --secondary-foreground: #0a0a14;
+  --muted: #f4f4f7;
+  --muted-foreground: #64646e;
+  --accent: #f1f1f4;
+  --accent-foreground: #0a0a14;
   --destructive: #FF6E52;
-  --border: #e0ddf0;
-  --input: #e0ddf0;
-  --ring: #2700F2;
+  --border: #e8e8ec;
+  --input: #e8e8ec;
+  --ring: #271897;
   --chart-1: #2700F2;
   --chart-2: #66D6CA;
   --chart-3: #FF6E52;

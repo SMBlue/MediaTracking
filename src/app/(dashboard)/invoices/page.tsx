@@ -141,17 +141,17 @@ export default async function InvoicesPage() {
           }
         />
       ) : (
-        <div className="border rounded-lg bg-card overflow-hidden">
+        <div className="border border-border rounded-2xl bg-card overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="hover:bg-transparent">
                 <TableHead>Type</TableHead>
                 <TableHead>Invoice #</TableHead>
                 <TableHead>Platform</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead className="text-right">Total</TableHead>
-                <TableHead>Allocated To</TableHead>
-                <TableHead>Paid to Vendor</TableHead>
+                <TableHead>Allocated</TableHead>
+                <TableHead>Paid</TableHead>
                 <TableHead>Concur</TableHead>
                 <TableHead></TableHead>
               </TableRow>
