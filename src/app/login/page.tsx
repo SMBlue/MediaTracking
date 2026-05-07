@@ -1,93 +1,84 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
 
-export default function LoginPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+function LoginForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const searchParams = useSearchParams();
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+  const errorFromUrl = searchParams.get("error");
+  const errorMessage =
+    errorFromUrl === "domain"
+      ? "Only @bluestate.co email addresses are allowed."
+      : errorFromUrl === "auth"
+      ? "Authentication failed. Please try again."
+      : error;
+
+  const handleGoogleSignIn = async () => {
     setError("");
+    setLoading(true);
 
     const supabase = createClient();
-
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        queryParams: {
+          hd: "bluestate.co",
+        },
+      },
     });
 
     if (error) {
+      console.error("OAuth error:", error);
       setError(error.message);
       setLoading(false);
-    } else {
-      router.push("/");
-      router.refresh();
+    } else if (data?.url) {
+      window.location.href = data.url;
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-bs-midnight">
-      <Card className="w-full max-w-md shadow-lg border-bs-medium-blue/30">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl text-bs-cobalt">MBA Tracker</CardTitle>
-          <p className="text-muted-foreground">Sign in to your account</p>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
-            {error && (
-              <div className="bg-bs-coral/10 text-bs-coral border border-bs-coral/20 p-3 rounded-md text-sm">
-                {error}
-              </div>
-            )}
+    <Card className="w-full max-w-md">
+      <CardHeader className="text-center space-y-2">
+        <div className="mx-auto size-10 rounded-lg bg-bs-cobalt/95 flex items-center justify-center shadow-sm">
+          <span className="text-white text-lg font-bold tracking-tight">M</span>
+        </div>
+        <CardTitle className="text-xl pt-1">MBA Tracker</CardTitle>
+        <CardDescription>Sign in with your Blue State Google account</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {errorMessage && (
+          <div className="p-3 rounded-md border border-bs-coral/30 bg-bs-coral/5 text-bs-coral-dark text-sm">
+            {errorMessage}
+          </div>
+        )}
+        <Button
+          onClick={handleGoogleSignIn}
+          className="w-full"
+          disabled={loading}
+        >
+          {loading ? "Redirecting…" : "Sign in with Google"}
+        </Button>
+        <p className="text-center text-xs text-muted-foreground">
+          Restricted to @bluestate.co accounts
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
 
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@company.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Signing in..." : "Sign in"}
-            </Button>
-          </form>
-
-          <p className="text-center text-sm text-muted-foreground mt-4">
-            Don&apos;t have an account?{" "}
-            <Link href="/signup" className="text-bs-cobalt hover:underline">
-              Sign up
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
+export default function LoginPage() {
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+      <Suspense>
+        <LoginForm />
+      </Suspense>
     </div>
   );
 }
