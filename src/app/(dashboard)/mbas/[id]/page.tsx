@@ -25,6 +25,7 @@ import { prisma } from "@/lib/db";
 import { logAudit, computeChanges } from "@/lib/audit";
 import { calculateEffectiveBudget } from "@/lib/budget";
 import { MBAHeader } from "@/components/mba-header";
+import { ConcurStatusBadge } from "@/components/concur-status-badge";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 
@@ -365,24 +366,134 @@ async function updateMBA(formData: FormData) {
 
 async function updateNetsuiteProject(formData: FormData) {
   "use server";
+  const { isNetsuiteConfigured } = await import("@/lib/netsuite/tba-client");
+  const { searchNetsuiteProjects } = await import("@/lib/netsuite/queries");
+  const { DEFAULT_CONCUR_OFFICE_CODE } = await import("@/lib/concur/constants");
 
   const id = formData.get("id") as string;
-  const netsuiteProjectNumber = (formData.get("netsuiteProjectNumber") as string)?.trim() || null;
+  const netsuiteProjectNumber =
+    (formData.get("netsuiteProjectNumber") as string)?.trim() || null;
 
   const existing = await prisma.mBA.findUnique({ where: { id } });
+  if (!existing) {
+    redirect(`/mbas/${id}`);
+  }
 
-  await prisma.mBA.update({
-    where: { id },
-    data: { netsuiteProjectNumber },
-  });
+  const updateData: {
+    netsuiteProjectNumber: string | null;
+    concurClientCode?: string;
+    concurProjectOfficeCode?: string;
+  } = { netsuiteProjectNumber };
 
-  if (existing && existing.netsuiteProjectNumber !== netsuiteProjectNumber) {
+  // If a new NS project number is being set, look up the customer and auto-fill
+  // concurClientCode + default office. We only override Concur fields if they
+  // were previously empty so we don't clobber manual edits.
+  if (
+    netsuiteProjectNumber &&
+    netsuiteProjectNumber !== existing.netsuiteProjectNumber &&
+    isNetsuiteConfigured()
+  ) {
+    try {
+      const matches = await searchNetsuiteProjects(netsuiteProjectNumber);
+      // Pick the row whose entityId exactly matches what the user entered.
+      const exact = matches.find((m) => m.entityId === netsuiteProjectNumber);
+      if (exact && exact.customerEntityId && !existing.concurClientCode) {
+        updateData.concurClientCode = exact.customerEntityId;
+      }
+      if (!existing.concurProjectOfficeCode) {
+        updateData.concurProjectOfficeCode = DEFAULT_CONCUR_OFFICE_CODE;
+      }
+    } catch {
+      // Lookup failed — proceed with just the NS number; user can fix later.
+    }
+  }
+
+  await prisma.mBA.update({ where: { id }, data: updateData });
+
+  if (existing.netsuiteProjectNumber !== netsuiteProjectNumber) {
     await logAudit({
       entityType: "MBA",
       entityId: id,
       action: "UPDATE",
-      changes: { netsuiteProjectNumber: { old: existing.netsuiteProjectNumber, new: netsuiteProjectNumber } },
+      changes: {
+        netsuiteProjectNumber: {
+          old: existing.netsuiteProjectNumber,
+          new: netsuiteProjectNumber,
+        },
+        ...(updateData.concurClientCode
+          ? {
+              concurClientCode: {
+                old: existing.concurClientCode,
+                new: updateData.concurClientCode,
+              },
+            }
+          : {}),
+      },
     });
+  }
+
+  redirect(`/mbas/${id}`);
+}
+
+async function updateConcurFields(formData: FormData) {
+  "use server";
+
+  const id = formData.get("id") as string;
+  const concurClientCode =
+    (formData.get("concurClientCode") as string)?.trim() || null;
+  const concurProjectOfficeCode =
+    (formData.get("concurProjectOfficeCode") as string)?.trim() || null;
+
+  const existing = await prisma.mBA.findUnique({ where: { id } });
+  if (!existing) redirect(`/mbas/${id}`);
+
+  await prisma.mBA.update({
+    where: { id },
+    data: {
+      concurClientCode,
+      concurProjectOfficeCode,
+      // If the manual edit changes the codes, drop the synced status so the
+      // next cron run will re-push under the new codes.
+      concurProjectId: null,
+      concurProjectCode: null,
+      concurSyncStatus: null,
+    },
+  });
+
+  await logAudit({
+    entityType: "MBA",
+    entityId: id,
+    action: "UPDATE",
+    changes: {
+      concurClientCode: {
+        old: existing!.concurClientCode,
+        new: concurClientCode,
+      },
+      concurProjectOfficeCode: {
+        old: existing!.concurProjectOfficeCode,
+        new: concurProjectOfficeCode,
+      },
+    },
+  });
+
+  redirect(`/mbas/${id}`);
+}
+
+async function syncMbaToConcur(formData: FormData) {
+  "use server";
+  const { syncWithConcur } = await import("@/lib/concur/sync");
+  const id = formData.get("id") as string;
+
+  // Clear failed status so the sync attempts again
+  await prisma.mBA.update({
+    where: { id },
+    data: { concurSyncStatus: null },
+  });
+
+  try {
+    await syncWithConcur();
+  } catch (err) {
+    console.error("Manual Concur MBA sync failed:", err);
   }
 
   redirect(`/mbas/${id}`);
@@ -923,6 +1034,73 @@ export default async function MBADetailPage({
           </CardContent>
         </Card>
       )}
+
+      {/* Concur sync */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between gap-2">
+            <span>Concur Project Sync</span>
+            <ConcurStatusBadge status={mba.concurSyncStatus} />
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <form action={updateConcurFields} className="space-y-4">
+            <input type="hidden" name="id" value={mba.id} />
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="concurClientCode">
+                  Concur Client Code (level 1)
+                </Label>
+                <Input
+                  id="concurClientCode"
+                  name="concurClientCode"
+                  defaultValue={mba.concurClientCode || ""}
+                  placeholder="e.g. 270709"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="concurProjectOfficeCode">
+                  Concur Office Code (level 3)
+                </Label>
+                <Input
+                  id="concurProjectOfficeCode"
+                  name="concurProjectOfficeCode"
+                  defaultValue={mba.concurProjectOfficeCode || ""}
+                  placeholder="1 = NY, 5 = DC, …"
+                />
+              </div>
+            </div>
+            <div className="grid gap-2 md:grid-cols-2 text-sm text-muted-foreground">
+              <div>
+                Project ID:{" "}
+                <span className="font-mono text-foreground">
+                  {mba.concurProjectId ?? "—"}
+                </span>
+              </div>
+              <div>
+                Project Code:{" "}
+                <span className="font-mono text-foreground">
+                  {mba.concurProjectCode ?? "—"}
+                </span>
+              </div>
+            </div>
+            <Button type="submit">Save Concur fields</Button>
+          </form>
+
+          {mba.netsuiteProjectNumber &&
+            mba.concurClientCode &&
+            mba.concurSyncStatus !== "SYNCED" && (
+              <form action={syncMbaToConcur}>
+                <input type="hidden" name="id" value={mba.id} />
+                <Button type="submit" variant="outline">
+                  {mba.concurSyncStatus === "FAILED"
+                    ? "Retry Concur sync"
+                    : "Push project to Concur"}
+                </Button>
+              </form>
+            )}
+        </CardContent>
+      </Card>
 
       {/* Client Payment Tracking - what the client pays us */}
       <Card>

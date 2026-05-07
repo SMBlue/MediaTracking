@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { AlertBanner } from "@/components/ui/alert-banner";
 import { Badge } from "@/components/ui/badge";
+import { ConcurStatusBadge } from "@/components/concur-status-badge";
 import { prisma } from "@/lib/db";
 
 const PLATFORMS = [
@@ -44,6 +45,8 @@ async function getInvoices() {
     orderBy: { invoiceDate: "desc" },
   });
 }
+
+
 
 async function getDraftCount() {
   return prisma.invoice.count({ where: { status: "DRAFT" } });
@@ -149,6 +152,7 @@ export default async function InvoicesPage() {
                 <TableHead className="text-right">Total</TableHead>
                 <TableHead>Allocated To</TableHead>
                 <TableHead>Paid to Vendor</TableHead>
+                <TableHead>Concur</TableHead>
                 <TableHead></TableHead>
               </TableRow>
             </TableHeader>
@@ -214,6 +218,9 @@ export default async function InvoicesPage() {
                       ) : (
                         <Badge variant="unpaid" dot>Unpaid</Badge>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <ConcurStatusBadge status={invoice.concurSyncStatus} />
                     </TableCell>
                     <TableCell>
                       <Button asChild variant="ghost" size="sm">

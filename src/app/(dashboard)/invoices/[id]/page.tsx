@@ -17,9 +17,11 @@ import { AlertBanner } from "@/components/ui/alert-banner";
 import { Badge } from "@/components/ui/badge";
 import { prisma } from "@/lib/db";
 import { LineItemAssignments } from "@/components/line-item-assignments";
+import { ConcurStatusBadge } from "@/components/concur-status-badge";
 import {
   togglePaidStatus,
   deleteInvoice,
+  syncInvoiceToConcur,
   confirmDraft,
   discardDraft,
 } from "./actions";
@@ -222,6 +224,59 @@ export default async function InvoiceDetailPage({
           </CardContent>
         </Card>
       </div>
+
+      {/* Concur sync */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between gap-2">
+            <span>Concur</span>
+            <ConcurStatusBadge status={invoice.concurSyncStatus} />
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-2 md:grid-cols-2 text-sm text-muted-foreground">
+            <div>
+              Concur invoice ID:{" "}
+              <span className="font-mono text-foreground">
+                {invoice.concurInvoiceId ?? "—"}
+              </span>
+            </div>
+            <div>
+              Last sync:{" "}
+              <span className="text-foreground">
+                {invoice.concurLastSyncAt
+                  ? formatDate(invoice.concurLastSyncAt)
+                  : "—"}
+              </span>
+            </div>
+            {invoice.concurLastSyncError && (
+              <div className="md:col-span-2 text-bs-coral">
+                Last error: {invoice.concurLastSyncError}
+              </div>
+            )}
+          </div>
+          {invoice.status === "CONFIRMED" &&
+            invoice.concurSyncStatus !== "PAYMENT_RECEIVED" && (
+              <form action={syncInvoiceToConcur}>
+                <input type="hidden" name="id" value={invoice.id} />
+                <Button
+                  type="submit"
+                  variant={
+                    invoice.concurSyncStatus === "SYNCED"
+                      ? "outline"
+                      : "default"
+                  }
+                >
+                  {invoice.concurSyncStatus === "SYNC_FAILED"
+                    ? "Retry sync"
+                    : invoice.concurSyncStatus === "SYNCED"
+                    ? "Re-sync"
+                    : "Push to Concur"}
+                </Button>
+              </form>
+            )}
+        </CardContent>
+      </Card>
 
       {/* Line Items */}
       <Card>

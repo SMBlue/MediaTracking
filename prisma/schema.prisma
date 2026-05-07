@@ -88,6 +88,21 @@ model MBA {
 
   netsuiteProjectNumber String?
 
+  // Concur integration
+  concurProjectId          String?   // UUID from Concur List Item API (level-2)
+  concurProjectCode        String?   // level-2 shortCode (the project, e.g., "695055")
+  concurClientCode         String?   // level-1 shortCode (the client, e.g., "270709")
+  concurProjectOfficeCode  String?   // level-3 shortCode (project office, e.g., "5")
+  concurSyncStatus         String?   // SYNCED, FAILED, etc.
+
+  // Contract email ingestion (source tracking)
+  contractEmailId          String?   // Gmail messageId of the contract email
+  contractAttachmentId     String?   // Gmail attachmentId of the specific PDF
+  contractParsedAt         DateTime?
+  contractParseConfidence  Float?
+
+  @@index([contractEmailId, contractAttachmentId])
+
   client              Client              @relation(fields: [clientId], references: [id], onDelete: Cascade)
   invoiceAllocations  InvoiceAllocation[]
   changeOrders        ChangeOrder[]
@@ -136,6 +151,12 @@ model Invoice {
   emailReceivedAt DateTime?
   parseConfidence Float?
   parseErrors     String?
+
+  // Concur integration
+  concurInvoiceId     String?          @unique // PaymentRequestId from Concur
+  concurSyncStatus    ConcurSyncStatus @default(NOT_SYNCED)
+  concurLastSyncAt    DateTime?
+  concurLastSyncError String?
 
   allocations   InvoiceAllocation[]
   lineItems     VendorInvoiceLineItem[]
@@ -305,4 +326,36 @@ model NetsuiteClientInvoice {
   mba MBA @relation(fields: [mbaId], references: [id], onDelete: Cascade)
 
   @@index([mbaId])
+}
+
+// Concur integration
+
+enum ConcurSyncStatus {
+  NOT_SYNCED
+  PENDING
+  SYNCED
+  SYNC_FAILED
+  PAYMENT_RECEIVED
+}
+
+model ConcurToken {
+  id           String   @id @default(cuid())
+  accessToken  String   @db.Text
+  refreshToken String   @db.Text
+  expiresAt    DateTime
+  geolocation  String   // e.g. https://us2.api.concursolutions.com
+  updatedAt    DateTime @updatedAt
+}
+
+model ConcurSyncLog {
+  id           String   @id @default(cuid())
+  startedAt    DateTime @default(now())
+  completedAt  DateTime?
+  invoicesPushed    Int @default(0)
+  projectsSynced    Int @default(0)
+  paymentsUpdated   Int @default(0)
+  errors       String?
+  status       String   @default("RUNNING") // RUNNING, COMPLETED, FAILED
+
+  @@index([startedAt])
 }

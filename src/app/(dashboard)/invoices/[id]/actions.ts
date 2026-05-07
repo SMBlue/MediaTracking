@@ -5,6 +5,37 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
 import { syncInvoiceAllocations } from "@/lib/invoice-matching";
+import { pushInvoiceToConcur } from "@/lib/concur/invoices";
+
+export async function syncInvoiceToConcur(formData: FormData) {
+  const id = formData.get("id") as string;
+
+  // If this is a retry, clear the previous failure first so the push isn't blocked.
+  const existing = await prisma.invoice.findUnique({
+    where: { id },
+    select: { concurInvoiceId: true, concurSyncStatus: true },
+  });
+
+  if (existing?.concurSyncStatus === "SYNC_FAILED") {
+    await prisma.invoice.update({
+      where: { id },
+      data: {
+        concurSyncStatus: "NOT_SYNCED",
+        concurLastSyncError: null,
+      },
+    });
+  }
+
+  try {
+    await pushInvoiceToConcur(id);
+  } catch (err) {
+    // pushInvoiceToConcur already records the failure on the invoice; we only
+    // need to make sure the page re-renders so the user sees the new status.
+    console.error("Manual Concur sync failed:", err);
+  }
+
+  redirect(`/invoices/${id}`);
+}
 
 export async function togglePaidStatus(formData: FormData) {
   const id = formData.get("id") as string;

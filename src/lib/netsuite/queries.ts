@@ -383,3 +383,63 @@ export async function fetchAdVendorBills(
   const allBills = await fetchRecentVendorBills(afterDate);
   return allBills.filter((b) => isAdVendor(b.vendorName));
 }
+
+// --- Project lookup (for matching contracts to NetSuite projects) ---
+
+export interface NetsuiteProjectRow {
+  /** NetSuite internal id */
+  internalId: string;
+  /** Project number (BSD's reference) — used as netsuiteProjectNumber */
+  entityId: string;
+  /** Display name (companyname) */
+  name: string;
+  /** Customer name (parent company) */
+  customerName: string | null;
+  /** Customer's NetSuite internal id (numeric).
+   *  This is what Concur uses as the level-1 client shortCode.
+   *  NOTE: this is `c.id`, NOT `c.entityid` — for customers, entityid is
+   *  often the display name rather than a numeric ID. */
+  customerEntityId: string | null;
+}
+
+/**
+ * Search NetSuite projects by name (fuzzy / LIKE match).
+ * Useful for matching parsed contract project names to existing NS projects.
+ */
+export async function searchNetsuiteProjects(
+  searchTerm: string
+): Promise<NetsuiteProjectRow[]> {
+  assertSafeString(searchTerm, "searchTerm");
+  const client = createNetSuiteClient();
+
+  // Use LIKE on companyname (project display name); also pull parent customer info.
+  // For customer code, use c.id (internal NetSuite id) — NOT c.entityid, which
+  // for customers is the display name rather than a numeric code.
+  const rows = await client.queryAll<{
+    internal_id: string;
+    entity_id: string;
+    name: string;
+    customer_name: string | null;
+    customer_internal_id: string | null;
+  }>(`
+    SELECT j.id AS internal_id,
+           j.entityid AS entity_id,
+           j.companyname AS name,
+           c.companyname AS customer_name,
+           c.id AS customer_internal_id
+    FROM job j
+    LEFT JOIN customer c ON j.parent = c.id
+    WHERE LOWER(j.companyname) LIKE LOWER('%${searchTerm}%')
+    ORDER BY j.companyname
+  `);
+
+  return rows.map((r) => ({
+    internalId: String(r.internal_id),
+    entityId: String(r.entity_id),
+    name: r.name,
+    customerName: r.customer_name,
+    customerEntityId: r.customer_internal_id
+      ? String(r.customer_internal_id)
+      : null,
+  }));
+}
