@@ -4,23 +4,23 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
-  Wallet,
   Briefcase,
   Receipt,
   Activity,
   ClipboardList,
+  BookOpen,
   LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 
 const navItems = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { href: "/cash-position", label: "Cash Position", icon: Wallet, exact: true },
+  { href: "/", label: "Overview", icon: LayoutDashboard, exact: true },
   { href: "/mbas", label: "MBAs", icon: Briefcase, exact: false },
   { href: "/invoices", label: "Vendor Invoices", icon: Receipt, exact: false },
   { href: "/sync-log", label: "Sync Log", icon: Activity, exact: true },
   { href: "/audit", label: "Audit Log", icon: ClipboardList, exact: true },
+  { href: "/docs", label: "Documentation", icon: BookOpen, exact: false },
 ];
 
 export function SidebarNav({ draftCount = 0 }: { draftCount?: number }) {

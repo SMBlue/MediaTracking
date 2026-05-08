@@ -7,8 +7,7 @@ import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 
 const navItems = [
-  { href: "/", label: "Dashboard", exact: true },
-  { href: "/cash-position", label: "Cash Position", exact: true },
+  { href: "/", label: "Overview", exact: true },
   { href: "/mbas", label: "MBAs", exact: false },
   { href: "/invoices", label: "Vendor Invoices", exact: false },
   { href: "/sync-log", label: "Sync Log", exact: true },
