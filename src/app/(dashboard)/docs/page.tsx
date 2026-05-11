@@ -11,6 +11,9 @@ import {
   Megaphone,
   Calculator,
   HelpCircle,
+  Zap,
+  ArrowDown,
+  ArrowRight,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import {
@@ -28,6 +31,7 @@ export const metadata = {
 
 const tocSections = [
   { id: "quick-start", label: "Quick start", icon: BookOpen },
+  { id: "automation", label: "What’s automated", icon: Zap },
   { id: "concepts", label: "Core concepts", icon: HelpCircle },
   { id: "pages", label: "Page-by-page guide", icon: LayoutDashboard },
   { id: "mba-flow", label: "MBA lifecycle", icon: Briefcase },
@@ -70,6 +74,7 @@ export default function DocsPage() {
 
         <div className="space-y-12 min-w-0">
           <QuickStart />
+          <Automation />
           <Concepts />
           <PageGuide />
           <MBAFlow />
@@ -119,10 +124,12 @@ function Prose({ children }: { children: React.ReactNode }) {
 function Step({
   n,
   title,
+  auto,
   children,
 }: {
   n: number;
   title: string;
+  auto?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -131,10 +138,138 @@ function Step({
         {n}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium">{title}</p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="text-sm font-medium">{title}</p>
+          {auto !== undefined && <AutoBadge auto={auto} />}
+        </div>
         <div className="text-sm text-muted-foreground mt-1 space-y-1.5">
           {children}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function AutoBadge({ auto }: { auto: boolean }) {
+  return auto ? (
+    <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-bs-cobalt/10 text-bs-cobalt">
+      <Zap className="size-2.5" />
+      Automated
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-bs-teal/20 text-bs-teal-dark">
+      You do this
+    </span>
+  );
+}
+
+function FlowDiagram({
+  title,
+  description,
+  rows,
+}: {
+  title: string;
+  description?: string;
+  rows: Array<{
+    lane: "auto" | "manual" | "handoff";
+    label: string;
+    detail?: string;
+  }>;
+}) {
+  return (
+    <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      <div className="px-5 pt-5 pb-3">
+        <p className="text-sm font-semibold">{title}</p>
+        {description && (
+          <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+        )}
+      </div>
+      <div className="grid grid-cols-2 border-t border-border bg-secondary/30">
+        <div className="px-4 py-2 border-r border-border">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-bs-cobalt flex items-center gap-1">
+            <Zap className="size-3" /> Automated
+          </p>
+        </div>
+        <div className="px-4 py-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-bs-teal-dark">
+            You do this
+          </p>
+        </div>
+      </div>
+      <div className="divide-y divide-border">
+        {rows.map((row, i) => (
+          <FlowRow
+            key={i}
+            row={row}
+            isLast={i === rows.length - 1}
+            nextLane={rows[i + 1]?.lane}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FlowRow({
+  row,
+  isLast,
+  nextLane,
+}: {
+  row: { lane: "auto" | "manual" | "handoff"; label: string; detail?: string };
+  isLast: boolean;
+  nextLane?: "auto" | "manual" | "handoff";
+}) {
+  if (row.lane === "handoff") {
+    return (
+      <div className="grid grid-cols-2">
+        <div className="px-4 py-2 border-r border-border flex items-center justify-end gap-2 text-[11px] text-muted-foreground italic">
+          {row.label}
+          <ArrowRight className="size-3.5 text-bs-cobalt" />
+        </div>
+        <div className="px-4 py-2" />
+      </div>
+    );
+  }
+
+  const isAuto = row.lane === "auto";
+  const card = (
+    <div
+      className={`rounded-md border p-3 ${
+        isAuto
+          ? "border-bs-cobalt/20 bg-bs-light-blue/30"
+          : "border-bs-teal/30 bg-bs-teal/10"
+      }`}
+    >
+      <p className="text-sm font-medium leading-snug">{row.label}</p>
+      {row.detail && (
+        <p className="text-xs text-muted-foreground mt-1">{row.detail}</p>
+      )}
+    </div>
+  );
+
+  const showConnector = !isLast && nextLane && nextLane !== "handoff" && nextLane === row.lane;
+
+  return (
+    <div className="grid grid-cols-2 relative">
+      <div
+        className={`px-4 py-3 border-r border-border ${
+          isAuto ? "" : "bg-muted/20"
+        }`}
+      >
+        {isAuto ? card : null}
+        {isAuto && showConnector && (
+          <div className="flex justify-center mt-2 -mb-1">
+            <ArrowDown className="size-3.5 text-bs-cobalt/60" />
+          </div>
+        )}
+      </div>
+      <div className={`px-4 py-3 ${isAuto ? "bg-muted/20" : ""}`}>
+        {!isAuto ? card : null}
+        {!isAuto && showConnector && (
+          <div className="flex justify-center mt-2 -mb-1">
+            <ArrowDown className="size-3.5 text-bs-teal-dark/60" />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -175,37 +310,48 @@ function QuickStart() {
         <p>
           MBA Tracker is where Blue State plans, tracks, and reconciles paid
           media. Each <strong>MBA</strong> (Media Buying Agreement) is a budget
-          container for a client engagement. Vendor platforms send us invoices
-          for the spend; the tracker matches those invoices back to the right
-          MBA so finance can bill the client and close out the project.
+          container for a client engagement.
         </p>
-        <p>The day-to-day flow is:</p>
+        <p>
+          <strong>Most of the pipeline runs on its own.</strong> MBAs are
+          auto-created from signed contracts; vendor invoices are auto-parsed
+          from email; NetSuite and Concur stay in sync via cron jobs. Your job
+          is mostly to <strong>review, allocate, and reconcile</strong>.
+        </p>
+        <p>The day-to-day flow:</p>
       </Prose>
       <div className="rounded-2xl border border-border bg-card p-6 space-y-5">
-        <Step n={1} title="Set up the MBA">
+        <Step n={1} auto title="MBA is created from the signed contract">
           <p>
-            A signed media buy comes in. Create an MBA with the client, budget,
-            start/end dates, and (when known) the NetSuite project number.
+            A signed media buy emailed to the contracts inbox is parsed,
+            matched to a NetSuite project, and saved as an active MBA. See{" "}
+            <a href="#automation" className="underline">
+              What’s automated
+            </a>{" "}
+            for the full pipeline.
           </p>
         </Step>
-        <Step n={2} title="Spend through the campaign window">
+        <Step n={2} auto title="Vendor invoices arrive and get parsed">
           <p>
-            The ads team runs campaigns. Vendors (Meta, Google, programmatic
-            partners, etc.) send invoices to{" "}
+            Platforms email invoices to{" "}
             <code className="text-xs bg-secondary/60 px-1.5 py-0.5 rounded">
               mediainvoices@bluestate.co
             </code>
-            . The tracker auto-parses them into draft invoices.
+            . A cron pulls the inbox, Claude parses line items, and drafts
+            land in the queue.
           </p>
         </Step>
-        <Step n={3} title="Review drafts, allocate to MBAs">
+        <Step n={3} auto={false} title="Review drafts, allocate to MBAs">
           <p>
-            Open <Link href="/invoices/drafts" className="underline">Vendor Invoices → Drafts</Link>,
-            confirm the parse, and assign each line item to the MBA it belongs
-            to. High-confidence drafts can be confirmed in bulk.
+            Open{" "}
+            <Link href="/invoices/drafts" className="underline">
+              Vendor Invoices → Drafts
+            </Link>
+            , confirm the parse, and assign each line item to the MBA it
+            belongs to. This is the one step the system can’t do for you.
           </p>
         </Step>
-        <Step n={4} title="Track client payment & cash position">
+        <Step n={4} auto={false} title="Track client payment & cash position">
           <p>
             On the MBA detail page, mark client payments as they come in (full
             or partial). Use the{" "}
@@ -215,13 +361,189 @@ function QuickStart() {
             to see what’s owed to vendors vs. what clients have paid us.
           </p>
         </Step>
-        <Step n={5} title="Reconcile and close">
+        <Step n={5} auto={false} title="Reconcile and close">
           <p>
-            ~60 days after the end date, reconcile the MBA: refund the client,
-            roll the credit forward to a new MBA, or close at zero.
+            ~60 days after the end date, decide: refund the client, roll the
+            credit forward to a new MBA, or close at zero.
           </p>
         </Step>
       </div>
+    </Section>
+  );
+}
+
+/* ---------------- What’s automated ---------------- */
+
+function Automation() {
+  return (
+    <Section
+      id="automation"
+      title="What’s automated vs what you do"
+      description="Most of the pipeline runs on its own. Here’s what happens without you, and where you actually need to step in."
+    >
+      <Callout tone="tip" title="The short version">
+        <p>
+          MBAs are auto-created from signed contracts emailed to a shared
+          inbox. Vendor invoices are auto-parsed from{" "}
+          <code className="text-xs bg-secondary/60 px-1 rounded">
+            mediainvoices@bluestate.co
+          </code>
+          . Sync jobs handle NetSuite and Concur in both directions. Your real
+          job is three things: <strong>review</strong> what the parsers
+          created, <strong>allocate</strong> invoice line items to the right
+          MBA, and <strong>reconcile</strong> at close-out.
+        </p>
+      </Callout>
+
+      <FlowDiagram
+        title="How an MBA gets created"
+        description="From signed contract to active MBA — mostly hands-off."
+        rows={[
+          {
+            lane: "auto",
+            label: "Signed contract emailed in",
+            detail:
+              "PDF lands in the shared inbox the contracts pipeline watches.",
+          },
+          {
+            lane: "auto",
+            label: "Cron picks up the email",
+            detail: "Scheduled job pulls new attachments.",
+          },
+          {
+            lane: "auto",
+            label: "Claude parses the contract",
+            detail:
+              "Extracts client, project name, budget, currency, start/end dates, with a confidence score.",
+          },
+          {
+            lane: "auto",
+            label: "NetSuite match attempt",
+            detail:
+              "Finds the matching NetSuite project; auto-fills NS project # and Concur client code (level 1).",
+          },
+          {
+            lane: "auto",
+            label: "MBA created (status: ACTIVE)",
+            detail:
+              "Default Concur office code applied. Audit log records the create.",
+          },
+          {
+            lane: "handoff",
+            label: "Now it needs you",
+          },
+          {
+            lane: "manual",
+            label: "Spot-check the auto-created MBA",
+            detail:
+              "Open the MBA and confirm budget, dates, and NetSuite link look right. Fix the Concur office code if the default isn’t correct.",
+          },
+          {
+            lane: "manual",
+            label: "Track client payment as tranches arrive",
+            detail:
+              "On the MBA detail page, update Amount Paid as the client pays.",
+          },
+          {
+            lane: "manual",
+            label: "Reconcile at end-of-flight",
+            detail:
+              "Decide refund / rollover / close-at-zero, then set status to Closed.",
+          },
+        ]}
+      />
+
+      <FlowDiagram
+        title="How a vendor invoice gets paid"
+        description="From inbox PDF to allocated, approved, and paid — your only required step is allocation."
+        rows={[
+          {
+            lane: "auto",
+            label: "Vendor emails PDF",
+            detail: "Sent to mediainvoices@bluestate.co (or forwarded from @bluestate.co).",
+          },
+          {
+            lane: "auto",
+            label: "Cron pulls the inbox",
+            detail: "Runs every few hours.",
+          },
+          {
+            lane: "auto",
+            label: "Claude parses line items",
+            detail:
+              "Extracts campaign name + amount per line; scores parse confidence high/medium/low.",
+          },
+          {
+            lane: "auto",
+            label: "Draft invoice appears in /invoices/drafts",
+            detail: "Sidebar nav shows a red draft count badge.",
+          },
+          {
+            lane: "handoff",
+            label: "Now it needs you",
+          },
+          {
+            lane: "manual",
+            label: "Review the parse",
+            detail:
+              "Skim line items. High-confidence drafts can be bulk-confirmed; low-confidence ones may need edits.",
+          },
+          {
+            lane: "manual",
+            label: "Allocate lines to MBAs",
+            detail:
+              "The one step that always needs a human — the system can’t guess which MBA a campaign belongs to.",
+          },
+          {
+            lane: "manual",
+            label: "Confirm the draft",
+            detail: "Promotes from DRAFT to CONFIRMED.",
+          },
+          {
+            lane: "handoff",
+            label: "Hands back to automation",
+          },
+          {
+            lane: "auto",
+            label: "Concur sync pushes the invoice",
+            detail: "Sent for approval through the normal Concur workflow.",
+          },
+          {
+            lane: "auto",
+            label: "Payment status returns from Concur",
+            detail:
+              "When AP pays, sync flips the invoice to paid and the dashboard updates. You can also mark paid manually.",
+          },
+        ]}
+      />
+
+      <Callout tone="info" title="When you do need to enter things manually">
+        <ul className="list-disc pl-5 space-y-1">
+          <li>
+            <strong>One-off MBAs</strong> that didn’t come through a signed
+            contract email — use{" "}
+            <Link href="/mbas/new" className="underline">
+              + New MBA
+            </Link>
+            .
+          </li>
+          <li>
+            <strong>Invoices that arrive as CSVs or odd formats</strong> — use{" "}
+            <Link href="/invoices/new" className="underline">
+              + New Invoice
+            </Link>{" "}
+            with CSV upload or manual entry.
+          </li>
+          <li>
+            <strong>Change orders, credits, rollovers</strong> — recorded by
+            finance on the MBA detail page.
+          </li>
+          <li>
+            <strong>Client payment amounts</strong> — clients usually pay in
+            tranches; finance updates the running total.
+          </li>
+        </ul>
+      </Callout>
     </Section>
   );
 }
@@ -748,7 +1070,7 @@ function InvoiceFlow() {
       description="From inbox to fully allocated and paid."
     >
       <div className="rounded-2xl border border-border bg-card p-6 space-y-5">
-        <Step n={1} title="Vendor sends an invoice">
+        <Step n={1} auto title="Vendor sends an invoice">
           <p>
             Platforms email PDFs to{" "}
             <code className="text-xs bg-secondary/60 px-1.5 py-0.5 rounded">
@@ -761,7 +1083,7 @@ function InvoiceFlow() {
             addresses are processed too.
           </p>
         </Step>
-        <Step n={2} title="Auto-parse">
+        <Step n={2} auto title="Auto-parse">
           <p>
             A scheduled job pulls the inbox, extracts each PDF, and asks
             Claude to parse line items (campaign + amount). Each line gets a
@@ -769,7 +1091,7 @@ function InvoiceFlow() {
             <Badge variant="draft">draft</Badge>.
           </p>
         </Step>
-        <Step n={3} title="Review the draft">
+        <Step n={3} auto={false} title="Review the draft">
           <p>
             Open <Link href="/invoices/drafts" className="underline">Vendor
             Invoices → Drafts</Link>. Skim the parse, fix any miscategorised
@@ -777,7 +1099,7 @@ function InvoiceFlow() {
             bulk-confirmed.
           </p>
         </Step>
-        <Step n={4} title="Allocate to MBAs">
+        <Step n={4} auto={false} title="Allocate to MBAs">
           <p>
             On the invoice detail page, assign every line item to the MBA it
             belongs to. The “MBA Allocations” totals row tells you whether the
@@ -785,18 +1107,18 @@ function InvoiceFlow() {
             invoices list.
           </p>
         </Step>
-        <Step n={5} title="(Optional) push to Concur">
+        <Step n={5} auto title="Push to Concur">
           <p>
-            If Concur is connected, click <strong>Sync</strong> on the invoice
-            to push it for approval. Sync status and any errors are visible on
-            the detail page and on the Sync Log.
+            Concur sync pushes confirmed invoices for approval. Sync status
+            and any errors are visible on the detail page and in the Sync
+            Log. You can also trigger a manual sync from the invoice page.
           </p>
         </Step>
-        <Step n={6} title="Mark as paid">
+        <Step n={6} auto title="Mark as paid (or do it manually)">
           <p>
-            When AP cuts the cheque, hit <strong>Mark as Paid</strong> and the
-            tracker stamps the paid date. The dashboard’s “owed to vendors”
-            number drops accordingly.
+            When AP pays through Concur, the sync flips the invoice to paid
+            and updates the dashboard. For invoices outside Concur, hit{" "}
+            <strong>Mark as Paid</strong> on the detail page.
           </p>
         </Step>
       </div>
