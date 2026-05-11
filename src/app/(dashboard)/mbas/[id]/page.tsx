@@ -589,6 +589,7 @@ export default async function MBADetailPage({
           netsuiteProjectNumber: mba.netsuiteProjectNumber,
           clientId: mba.clientId,
           clientName: mba.client.name,
+          hasContractPdf: !!mba.contractPdfPath,
         }}
         clients={allClients}
         updateMBA={updateMBA}

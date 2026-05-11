@@ -22,6 +22,7 @@ import {
   isContractsGmailConfigured,
 } from "./gmail";
 import { analyzeContractWithClaude } from "./parser";
+import { uploadContractPdf } from "./storage";
 import { isNetsuiteConfigured } from "../netsuite/tba-client";
 import { findStrictProjectMatch } from "../netsuite/project-matching";
 import { DEFAULT_CONCUR_OFFICE_CODE } from "../concur/constants";
@@ -145,6 +146,29 @@ export async function syncContracts(): Promise<ContractsSyncResult> {
           entityId: mba.id,
           action: "CREATE",
         });
+
+        // Persist the contract PDF so it can be viewed later, independent of Gmail.
+        // Non-fatal: ingestion succeeds even if storage upload fails.
+        try {
+          const { path, size } = await uploadContractPdf({
+            mbaId: mba.id,
+            filename: attachment.filename,
+            buffer,
+          });
+          await prisma.mBA.update({
+            where: { id: mba.id },
+            data: {
+              contractPdfPath: path,
+              contractPdfFilename: attachment.filename,
+              contractPdfSize: size,
+              contractPdfUploadedAt: new Date(),
+            },
+          });
+        } catch (err) {
+          result.errors.push(
+            `MBA ${mbaNumber}: contract PDF upload failed (${err})`
+          );
+        }
 
         result.mbasCreated++;
         console.log(

@@ -101,6 +101,12 @@ model MBA {
   contractParsedAt         DateTime?
   contractParseConfidence  Float?
 
+  // Persisted contract PDF (Supabase Storage: mba-contracts bucket)
+  contractPdfPath          String?   // object key within bucket, e.g. "<mbaId>/<filename>.pdf"
+  contractPdfFilename      String?   // original filename from Gmail
+  contractPdfSize          Int?      // bytes
+  contractPdfUploadedAt    DateTime?
+
   @@index([contractEmailId, contractAttachmentId])
 
   client              Client              @relation(fields: [clientId], references: [id], onDelete: Cascade)

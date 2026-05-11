@@ -26,6 +26,7 @@ interface MBAHeaderProps {
     netsuiteProjectNumber: string | null;
     clientId: string;
     clientName: string;
+    hasContractPdf: boolean;
   };
   clients: { id: string; name: string }[];
   updateMBA: (formData: FormData) => Promise<void>;
@@ -216,6 +217,16 @@ export function MBAHeader({
           >
             Edit MBA details
           </Button>
+          {mba.hasContractPdf && (
+            <a
+              href={`/api/mbas/${mba.id}/contract`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-primary hover:underline"
+            >
+              View contract PDF
+            </a>
+          )}
         </div>
       </div>
       <form action={updateMBAStatus} className="flex items-center gap-2">
