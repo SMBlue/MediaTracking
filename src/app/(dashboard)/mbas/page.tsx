@@ -181,7 +181,7 @@ export default async function MBAsPage({
                     {!clientId && <TableCell>{mba.client.name}</TableCell>}
                     <TableCell className="font-medium">{mba.mbaNumber}</TableCell>
                     <TableCell className="text-muted-foreground text-sm">{mba.netsuiteProjectNumber || "\u2013"}</TableCell>
-                    <TableCell>{mba.name}</TableCell>
+                    <TableCell className="whitespace-normal">{mba.name}</TableCell>
                     <TableCell className="text-right tabular-nums">
                       {formatCurrency(budget)}
                     </TableCell>

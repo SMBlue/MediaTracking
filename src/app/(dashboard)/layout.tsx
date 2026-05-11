@@ -20,7 +20,7 @@ export default async function DashboardLayout({
     <div className="min-h-screen flex bg-background">
       <SidebarNav draftCount={draftCount} />
       <main className="flex-1 min-w-0 overflow-x-auto">
-        <div className="max-w-[1400px] mx-auto px-8 py-8">{children}</div>
+        <div className="max-w-[1600px] mx-auto px-8 py-8">{children}</div>
       </main>
     </div>
   );
