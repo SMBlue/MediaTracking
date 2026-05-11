@@ -315,7 +315,7 @@ function QuickStart() {
         <p>
           <strong>Most of the pipeline runs on its own.</strong> MBAs are
           auto-created from signed contracts; vendor invoices are auto-parsed
-          from email; NetSuite and Concur stay in sync via cron jobs. Your job
+          from email; NetSuite and Concur stay in sync automatically. Your job
           is mostly to <strong>review, allocate, and reconcile</strong>.
         </p>
         <p>The day-to-day flow:</p>
@@ -337,7 +337,7 @@ function QuickStart() {
             <code className="text-xs bg-secondary/60 px-1.5 py-0.5 rounded">
               mediainvoices@bluestate.co
             </code>
-            . A cron pulls the inbox, Claude parses line items, and drafts
+            . Automation pulls the inbox, Claude parses line items, and drafts
             land in the queue.
           </p>
         </Step>
@@ -353,12 +353,14 @@ function QuickStart() {
         </Step>
         <Step n={4} auto={false} title="Track client payment & cash position">
           <p>
-            On the MBA detail page, mark client payments as they come in (full
-            or partial). Use the{" "}
+            The NetSuite sync auto-updates the MBA’s Client Paid / Amount
+            Paid / Paid Date when NS reports its client invoices as Paid In
+            Full. You only need to update manually for tranches NS hasn’t
+            recorded yet. The{" "}
             <Link href="/" className="underline">
               Overview
             </Link>{" "}
-            to see what’s owed to vendors vs. what clients have paid us.
+            shows what’s owed to vendors vs. what clients have paid us.
           </p>
         </Step>
         <Step n={5} auto={false} title="Reconcile and close">
@@ -407,8 +409,8 @@ function Automation() {
           },
           {
             lane: "auto",
-            label: "Cron picks up the email",
-            detail: "Scheduled job pulls new attachments.",
+            label: "Automation picks up the email",
+            detail: "The contracts inbox is checked on a schedule.",
           },
           {
             lane: "auto",
@@ -439,10 +441,30 @@ function Automation() {
               "Open the MBA and confirm budget, dates, and NetSuite link look right. Fix the Concur office code if the default isn’t correct.",
           },
           {
-            lane: "manual",
-            label: "Track client payment as tranches arrive",
+            lane: "handoff",
+            label: "While campaigns run",
+          },
+          {
+            lane: "auto",
+            label: "NetSuite sync pulls client invoices",
             detail:
-              "On the MBA detail page, update Amount Paid as the client pays.",
+              "Each sync run pulls client invoices for the MBA’s NetSuite project. They show up in the “NetSuite Client Invoices” table on the MBA detail page.",
+          },
+          {
+            lane: "auto",
+            label: "MBA client-paid status updates from NetSuite",
+            detail:
+              "When NS reports invoices as Paid In Full, the MBA’s Client Paid / Amount Paid / Paid Date fields update automatically.",
+          },
+          {
+            lane: "handoff",
+            label: "You can still update manually",
+          },
+          {
+            lane: "manual",
+            label: "Override or fill in client payment",
+            detail:
+              "For tranches NS hasn’t recorded yet, update Amount Paid on the MBA detail page.",
           },
           {
             lane: "manual",
@@ -464,7 +486,7 @@ function Automation() {
           },
           {
             lane: "auto",
-            label: "Cron pulls the inbox",
+            label: "Automation pulls the inbox",
             detail: "Runs every few hours.",
           },
           {
@@ -510,9 +532,15 @@ function Automation() {
           },
           {
             lane: "auto",
-            label: "Payment status returns from Concur",
+            label: "NetSuite vendor-bill match flips paid status",
             detail:
-              "When AP pays, sync flips the invoice to paid and the dashboard updates. You can also mark paid manually.",
+              "When the bill posts in NetSuite as Paid In Full, automation matches it by invoice number and updates Paid / Paid Date on the invoice. This is the primary path.",
+          },
+          {
+            lane: "auto",
+            label: "Concur payment sync as a secondary path",
+            detail:
+              "Payments recorded through Concur also flow back and update matched invoices. You can still mark paid manually if neither source has caught up yet.",
           },
         ]}
       />
@@ -867,7 +895,7 @@ function PageGuide() {
             <strong>Email Ingestion</strong>: emails found, processed, and
             invoices created.
           </li>
-          <li>This page is read-only. Crons run on a schedule.</li>
+          <li>This page is read-only. Automation runs on a schedule.</li>
         </ul>
       </PageDoc>
 
@@ -1114,11 +1142,14 @@ function InvoiceFlow() {
             Log. You can also trigger a manual sync from the invoice page.
           </p>
         </Step>
-        <Step n={6} auto title="Mark as paid (or do it manually)">
+        <Step n={6} auto title="Paid status flows back from NetSuite and Concur">
           <p>
-            When AP pays through Concur, the sync flips the invoice to paid
-            and updates the dashboard. For invoices outside Concur, hit{" "}
-            <strong>Mark as Paid</strong> on the detail page.
+            The NetSuite sync matches our invoices to NS vendor bills by
+            invoice number and flips <strong>Paid</strong> / <strong>Paid
+            Date</strong> when NS reports Paid In Full — this is the primary
+            path. Concur payments also flow back through its sync as a
+            secondary source. You can still hit <strong>Mark as Paid</strong>{" "}
+            manually if neither has caught up.
           </p>
         </Step>
       </div>
