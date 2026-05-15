@@ -14,7 +14,7 @@ const navItems = [
   { href: "/audit", label: "Audit Log", exact: true },
 ];
 
-export function Nav({ draftCount = 0 }: { draftCount?: number }) {
+export function Nav() {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -56,11 +56,6 @@ export function Nav({ draftCount = 0 }: { draftCount?: number }) {
                   )}
                 >
                   {item.label}
-                  {item.href === "/invoices" && draftCount > 0 && (
-                    <span className="absolute -top-1 -right-1.5 inline-flex items-center justify-center w-4.5 h-4.5 text-[10px] font-bold text-white bg-bs-coral rounded-full">
-                      {draftCount}
-                    </span>
-                  )}
                 </Link>
               ))}
             </div>

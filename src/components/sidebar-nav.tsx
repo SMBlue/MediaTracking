@@ -23,7 +23,7 @@ const navItems = [
   { href: "/docs", label: "Documentation", icon: BookOpen, exact: false },
 ];
 
-export function SidebarNav({ draftCount = 0 }: { draftCount?: number }) {
+export function SidebarNav() {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -71,11 +71,6 @@ export function SidebarNav({ draftCount = 0 }: { draftCount?: number }) {
             >
               <Icon className="size-4 shrink-0 opacity-80" />
               <span className="flex-1">{item.label}</span>
-              {item.href === "/invoices" && draftCount > 0 && (
-                <span className="text-[10px] font-semibold tabular-nums text-bs-coral-dark bg-bs-coral/10 px-1.5 py-0.5 rounded-full">
-                  {draftCount}
-                </span>
-              )}
             </Link>
           );
         })}

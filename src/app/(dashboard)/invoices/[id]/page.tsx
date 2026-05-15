@@ -13,7 +13,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AlertBanner } from "@/components/ui/alert-banner";
 import { Badge } from "@/components/ui/badge";
 import { prisma } from "@/lib/db";
 import { LineItemAssignments } from "@/components/line-item-assignments";
@@ -22,8 +21,6 @@ import {
   togglePaidStatus,
   deleteInvoice,
   syncInvoiceToConcur,
-  confirmDraft,
-  discardDraft,
 } from "./actions";
 
 const PLATFORMS = [
@@ -104,48 +101,9 @@ export default async function InvoiceDetailPage({
   );
   const unallocated = totalAmount - allocatedTotal;
 
-  function confidenceBadge(confidence: number | null) {
-    if (confidence === null) return null;
-    const variant = confidence >= 0.8 ? "high" : confidence >= 0.5 ? "medium" : "low";
-    const label = confidence >= 0.8 ? "High" : confidence >= 0.5 ? "Medium" : "Low";
-    return (
-      <Badge variant={variant} dot>
-        {label} ({Math.round(confidence * 100)}%)
-      </Badge>
-    );
-  }
 
   return (
     <div className="space-y-6">
-      {invoice.status === "DRAFT" && (
-        <AlertBanner
-          variant="warning"
-          action={
-            <div className="flex gap-2">
-              <form action={confirmDraft}>
-                <input type="hidden" name="id" value={invoice.id} />
-                <Button type="submit">Confirm</Button>
-              </form>
-              <form action={discardDraft}>
-                <input type="hidden" name="id" value={invoice.id} />
-                <Button type="submit" variant="destructive">
-                  Discard
-                </Button>
-              </form>
-            </div>
-          }
-        >
-          <p className="font-medium">Draft Invoice — Pending Review</p>
-          <p className="text-bs-dark-gray text-sm">
-            This invoice was auto-parsed from email. Review the details and
-            confirm or discard.
-            {invoice.parseConfidence !== null && (
-              <> Parse confidence: {confidenceBadge(invoice.parseConfidence)}</>
-            )}
-          </p>
-        </AlertBanner>
-      )}
-
       <PageHeader
         title={invoice.invoiceNumber}
         description={`${PLATFORMS.find((p) => p.value === invoice.vendor)?.label || invoice.vendor} \u00b7 ${formatDate(invoice.invoiceDate)}`}
@@ -307,7 +265,6 @@ export default async function InvoiceDetailPage({
               name: mba.name,
               client: { name: mba.client.name },
             }))}
-            isDraft={invoice.status === "DRAFT"}
             totalAmount={totalAmount}
           />
         </CardContent>

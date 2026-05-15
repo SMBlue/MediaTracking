@@ -43,7 +43,6 @@ interface Props {
   invoiceId: string;
   lineItems: LineItem[];
   activeMBAs: MBAOption[];
-  isDraft: boolean;
   totalAmount: number;
 }
 
@@ -73,9 +72,12 @@ export function LineItemAssignments({
   invoiceId,
   lineItems,
   activeMBAs,
-  isDraft,
   totalAmount,
 }: Props) {
+  // Confidence is rendered for every row when present so users still
+  // catch low-confidence email-parsed lines now that the separate
+  // draft review queue is gone.
+  const hasAnyConfidence = lineItems.some((li) => li.confidence !== null);
   // Track local assignment overrides: lineItemId → mbaId (or null for unmapped)
   const [overrides, setOverrides] = useState<Map<string, string | null>>(
     new Map()
@@ -143,7 +145,7 @@ export function LineItemAssignments({
                 <TableHead>Campaign Name</TableHead>
                 <TableHead>Platform</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
-                {isDraft && <TableHead>Confidence</TableHead>}
+                {hasAnyConfidence && <TableHead>Confidence</TableHead>}
                 <TableHead>MBA Assignment</TableHead>
               </TableRow>
             </TableHeader>
@@ -163,7 +165,7 @@ export function LineItemAssignments({
                     <TableCell className="text-right">
                       {formatCurrency(item.amount)}
                     </TableCell>
-                    {isDraft && (
+                    {hasAnyConfidence && (
                       <TableCell>{confidenceBadge(item.confidence)}</TableCell>
                     )}
                     <TableCell>

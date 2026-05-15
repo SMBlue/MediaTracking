@@ -36,7 +36,7 @@ interface ClientRow {
 }
 
 async function getOverviewData() {
-  const [activeMBAs, totalMBACount, lastEmailSync, lastNetsuiteSync, draftCount] =
+  const [activeMBAs, totalMBACount, lastEmailSync, lastNetsuiteSync] =
     await Promise.all([
       prisma.mBA.findMany({
         where: { status: "ACTIVE" },
@@ -55,7 +55,6 @@ async function getOverviewData() {
       prisma.netsuiteSyncLog
         .findFirst({ orderBy: { startedAt: "desc" } })
         .catch(() => null),
-      prisma.invoice.count({ where: { status: "DRAFT" } }).catch(() => 0),
     ]);
 
   const clientMap = new Map<string, ClientRow>();
@@ -129,7 +128,6 @@ async function getOverviewData() {
     netCashFlow,
     lastEmailSync,
     lastNetsuiteSync,
-    draftCount,
   };
 }
 
@@ -179,7 +177,6 @@ export default async function OverviewPage() {
     netCashFlow,
     lastEmailSync,
     lastNetsuiteSync,
-    draftCount,
   } = data;
 
   return (
@@ -409,11 +406,6 @@ export default async function OverviewPage() {
                   ? [
                       { label: "Processed", value: lastEmailSync.emailsProcessed },
                       { label: "Created", value: lastEmailSync.invoicesCreated },
-                      {
-                        label: "Drafts",
-                        value: draftCount,
-                        href: draftCount > 0 ? "/invoices/drafts" : undefined,
-                      },
                     ]
                   : []
               }

@@ -83,38 +83,6 @@ export async function deleteInvoice(formData: FormData) {
   redirect("/invoices");
 }
 
-export async function confirmDraft(formData: FormData) {
-  const id = formData.get("id") as string;
-
-  // Sync allocations from line item assignments before confirming
-  await syncInvoiceAllocations(id);
-
-  await prisma.invoice.update({
-    where: { id },
-    data: { status: "CONFIRMED" },
-  });
-
-  await logAudit({
-    entityType: "Invoice",
-    entityId: id,
-    action: "UPDATE",
-    changes: { status: { old: "DRAFT", new: "CONFIRMED" } },
-  });
-
-  redirect(`/invoices/${id}`);
-}
-
-export async function discardDraft(formData: FormData) {
-  const id = formData.get("id") as string;
-  await prisma.invoice.delete({ where: { id } });
-  await logAudit({
-    entityType: "Invoice",
-    entityId: id,
-    action: "DELETE",
-  });
-  redirect("/invoices/drafts");
-}
-
 export async function bulkAssignLineItems(
   invoiceId: string,
   assignments: Array<{ lineItemId: string; mbaId: string | null }>

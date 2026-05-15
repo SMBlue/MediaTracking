@@ -48,10 +48,6 @@ async function getInvoices() {
 
 
 
-async function getDraftCount() {
-  return prisma.invoice.count({ where: { status: "DRAFT" } });
-}
-
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -70,10 +66,7 @@ function formatDate(date: Date) {
 }
 
 export default async function InvoicesPage() {
-  const [invoices, draftCount] = await Promise.all([
-    getInvoices(),
-    getDraftCount(),
-  ]);
+  const invoices = await getInvoices();
 
   const totalUnpaid = invoices
     .filter((inv) => !inv.isPaid && inv.type === "INVOICE")
@@ -94,21 +87,6 @@ export default async function InvoicesPage() {
           </Button>
         }
       />
-
-      {draftCount > 0 && (
-        <AlertBanner
-          variant="warning"
-          action={
-            <Button asChild variant="outline" size="sm">
-              <Link href="/invoices/drafts">Review Drafts</Link>
-            </Button>
-          }
-        >
-          <p>
-            <strong>{draftCount}</strong> draft invoice{draftCount !== 1 ? "s" : ""} pending review
-          </p>
-        </AlertBanner>
-      )}
 
       {(totalUnpaid > 0 || totalCredits > 0) && (
         <div className="flex gap-4">
