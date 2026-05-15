@@ -112,22 +112,6 @@ export default async function InvoiceDetailPage({
           { label: "Vendor Invoices", href: "/invoices" },
           { label: invoice.invoiceNumber },
         ]}
-        actions={
-          <form action={togglePaidStatus}>
-            <input type="hidden" name="id" value={invoice.id} />
-            <input
-              type="hidden"
-              name="currentStatus"
-              value={String(invoice.isPaid)}
-            />
-            <Button
-              type="submit"
-              variant={invoice.isPaid ? "outline" : "default"}
-            >
-              {invoice.isPaid ? "Mark as Unpaid" : "Mark as Paid"}
-            </Button>
-          </form>
-        }
       />
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -145,17 +129,29 @@ export default async function InvoiceDetailPage({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Allocated
+              Allocation
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">
-              {formatCurrency(allocatedTotal)}
-            </p>
-            {unallocated > 0.01 && (
-              <p className="text-sm text-bs-coral">
-                {formatCurrency(unallocated)} unallocated
-              </p>
+            {unallocated > 0.01 ? (
+              <>
+                <p className="text-2xl font-bold text-bs-coral">Unallocated</p>
+                <p className="text-sm text-muted-foreground">
+                  {formatCurrency(allocatedTotal)} of {formatCurrency(totalAmount)}{" "}
+                  &middot; {formatCurrency(unallocated)} remaining
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-2xl font-bold text-bs-teal-dark">
+                  Fully allocated
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {formatCurrency(allocatedTotal)} across{" "}
+                  {invoice.allocations.length}{" "}
+                  {invoice.allocations.length === 1 ? "MBA" : "MBAs"}
+                </p>
+              </>
             )}
           </CardContent>
         </Card>
@@ -182,59 +178,6 @@ export default async function InvoiceDetailPage({
           </CardContent>
         </Card>
       </div>
-
-      {/* Concur sync */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between gap-2">
-            <span>Concur</span>
-            <ConcurStatusBadge status={invoice.concurSyncStatus} />
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-2 md:grid-cols-2 text-sm text-muted-foreground">
-            <div>
-              Concur invoice ID:{" "}
-              <span className="font-mono text-foreground">
-                {invoice.concurInvoiceId ?? "—"}
-              </span>
-            </div>
-            <div>
-              Last sync:{" "}
-              <span className="text-foreground">
-                {invoice.concurLastSyncAt
-                  ? formatDate(invoice.concurLastSyncAt)
-                  : "—"}
-              </span>
-            </div>
-            {invoice.concurLastSyncError && (
-              <div className="md:col-span-2 text-bs-coral">
-                Last error: {invoice.concurLastSyncError}
-              </div>
-            )}
-          </div>
-          {invoice.status === "CONFIRMED" &&
-            invoice.concurSyncStatus !== "PAYMENT_RECEIVED" && (
-              <form action={syncInvoiceToConcur}>
-                <input type="hidden" name="id" value={invoice.id} />
-                <Button
-                  type="submit"
-                  variant={
-                    invoice.concurSyncStatus === "SYNCED"
-                      ? "outline"
-                      : "default"
-                  }
-                >
-                  {invoice.concurSyncStatus === "SYNC_FAILED"
-                    ? "Retry sync"
-                    : invoice.concurSyncStatus === "SYNCED"
-                    ? "Re-sync"
-                    : "Push to Concur"}
-                </Button>
-              </form>
-            )}
-        </CardContent>
-      </Card>
 
       {/* Line Items */}
       <Card>
@@ -317,6 +260,67 @@ export default async function InvoiceDetailPage({
         </CardContent>
       </Card>
 
+      {/* Concur push — sits below allocations so users land here after
+          confirming "Fully allocated" above. The "Push to Concur" click
+          is the explicit signal that allocation is done. */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between gap-2">
+            <span>Concur</span>
+            <ConcurStatusBadge status={invoice.concurSyncStatus} />
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-2 md:grid-cols-2 text-sm text-muted-foreground">
+            <div>
+              Concur invoice ID:{" "}
+              <span className="font-mono text-foreground">
+                {invoice.concurInvoiceId ?? "—"}
+              </span>
+            </div>
+            <div>
+              Last sync:{" "}
+              <span className="text-foreground">
+                {invoice.concurLastSyncAt
+                  ? formatDate(invoice.concurLastSyncAt)
+                  : "—"}
+              </span>
+            </div>
+            {invoice.concurLastSyncError && (
+              <div className="md:col-span-2 text-bs-coral">
+                Last error: {invoice.concurLastSyncError}
+              </div>
+            )}
+          </div>
+          {invoice.status === "CONFIRMED" &&
+            invoice.concurSyncStatus !== "PAYMENT_RECEIVED" && (
+              <form action={syncInvoiceToConcur}>
+                <input type="hidden" name="id" value={invoice.id} />
+                <Button
+                  type="submit"
+                  variant={
+                    invoice.concurSyncStatus === "SYNCED"
+                      ? "outline"
+                      : "default"
+                  }
+                  disabled={unallocated > 0.01}
+                  title={
+                    unallocated > 0.01
+                      ? "Allocate every dollar before pushing"
+                      : undefined
+                  }
+                >
+                  {invoice.concurSyncStatus === "SYNC_FAILED"
+                    ? "Retry sync"
+                    : invoice.concurSyncStatus === "SYNCED"
+                    ? "Re-sync"
+                    : "Push to Concur"}
+                </Button>
+              </form>
+            )}
+        </CardContent>
+      </Card>
+
       {invoice.notes && (
         <Card>
           <CardHeader>
@@ -328,20 +332,45 @@ export default async function InvoiceDetailPage({
         </Card>
       )}
 
-      <Card>
+      <Card className="border-bs-coral/30">
         <CardHeader>
-          <CardTitle>Danger Zone</CardTitle>
+          <CardTitle className="text-bs-coral-dark">Danger Zone</CardTitle>
         </CardHeader>
-        <CardContent>
-          <form action={deleteInvoice}>
-            <input type="hidden" name="id" value={invoice.id} />
-            <p className="text-sm text-muted-foreground mb-4">
-              Deleting this invoice will also remove all MBA allocations.
-            </p>
-            <Button type="submit" variant="destructive">
-              Delete Invoice
-            </Button>
-          </form>
+        <CardContent className="space-y-4">
+          <div className="flex items-start justify-between gap-4 pb-4 border-b border-border">
+            <div>
+              <p className="font-medium text-sm">Mark as paid</p>
+              <p className="text-sm text-muted-foreground">
+                Paid status normally flows from NetSuite. Only use this when
+                you need to override it manually.
+              </p>
+            </div>
+            <form action={togglePaidStatus}>
+              <input type="hidden" name="id" value={invoice.id} />
+              <input
+                type="hidden"
+                name="currentStatus"
+                value={String(invoice.isPaid)}
+              />
+              <Button type="submit" variant="outline" size="sm">
+                {invoice.isPaid ? "Mark as Unpaid" : "Mark as Paid"}
+              </Button>
+            </form>
+          </div>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="font-medium text-sm">Delete invoice</p>
+              <p className="text-sm text-muted-foreground">
+                Removes the invoice and all of its MBA allocations.
+              </p>
+            </div>
+            <form action={deleteInvoice}>
+              <input type="hidden" name="id" value={invoice.id} />
+              <Button type="submit" variant="destructive" size="sm">
+                Delete invoice
+              </Button>
+            </form>
+          </div>
         </CardContent>
       </Card>
     </div>
