@@ -21,6 +21,7 @@ import {
   InvoicePlatformEdit,
   InvoiceClientEdit,
 } from "@/components/invoice-inline-edits";
+import { ClearAllocationButton } from "@/components/clear-allocation-button";
 import {
   togglePaidStatus,
   deleteInvoice,
@@ -256,6 +257,7 @@ export default async function InvoiceDetailPage({
                   <TableHead>Client</TableHead>
                   <TableHead>MBA</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="w-10"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -273,6 +275,12 @@ export default async function InvoiceDetailPage({
                     <TableCell className="text-right">
                       {formatCurrency(Number(alloc.amount))}
                     </TableCell>
+                    <TableCell>
+                      <ClearAllocationButton
+                        allocationId={alloc.id}
+                        mbaLabel={`${alloc.mba.mbaNumber} - ${alloc.mba.name}`}
+                      />
+                    </TableCell>
                   </TableRow>
                 ))}
                 <TableRow className="font-bold">
@@ -280,6 +288,7 @@ export default async function InvoiceDetailPage({
                   <TableCell className="text-right">
                     {formatCurrency(allocatedTotal)}
                   </TableCell>
+                  <TableCell />
                 </TableRow>
               </TableBody>
             </Table>

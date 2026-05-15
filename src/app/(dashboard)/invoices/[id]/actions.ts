@@ -183,6 +183,38 @@ export async function updateInvoiceClient(
   revalidatePath(`/invoices/${invoiceId}`);
 }
 
+/**
+ * Remove a single MBA allocation by unmapping every line item that
+ * routed to that MBA, then re-syncing allocations from line items.
+ * Lets the user reverse one mis-assignment without going row by row
+ * through the line items table.
+ */
+export async function clearMbaAllocation(allocationId: string) {
+  const allocation = await prisma.invoiceAllocation.findUniqueOrThrow({
+    where: { id: allocationId },
+    select: { invoiceId: true, mbaId: true, amount: true },
+  });
+
+  await prisma.vendorInvoiceLineItem.updateMany({
+    where: { invoiceId: allocation.invoiceId, mbaId: allocation.mbaId },
+    data: { mbaId: null },
+  });
+
+  await syncInvoiceAllocations(allocation.invoiceId);
+
+  await logAudit({
+    entityType: "InvoiceAllocation",
+    entityId: allocationId,
+    action: "DELETE",
+    changes: {
+      mbaId: { old: allocation.mbaId, new: null },
+      amount: { old: Number(allocation.amount), new: 0 },
+    },
+  });
+
+  revalidatePath(`/invoices/${allocation.invoiceId}`);
+}
+
 export async function bulkAssignLineItems(
   invoiceId: string,
   assignments: Array<{ lineItemId: string; mbaId: string | null }>
