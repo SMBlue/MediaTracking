@@ -168,6 +168,14 @@ model Invoice {
   detectedClientName String?
   detectedVendorName String?
 
+  // Persisted source (Supabase Storage: invoice-sources bucket).
+  // PDFs land at sourcePdfPath; body-only invoices store the email
+  // body text directly. Both null until ingest persists.
+  sourcePdfPath       String?
+  sourcePdfFilename   String?
+  sourcePdfSize       Int?
+  sourceEmailBodyText String?
+
   // Concur integration
   concurInvoiceId     String?          @unique // PaymentRequestId from Concur
   concurSyncStatus    ConcurSyncStatus @default(NOT_SYNCED)

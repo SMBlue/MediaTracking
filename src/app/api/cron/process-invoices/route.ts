@@ -14,6 +14,7 @@ import {
 import { matchClient, mapPlatform } from "@/lib/invoice-matching";
 import { matchLineItemsToMBAs } from "@/lib/mba-matching";
 import { planParseUnits, type ParseAttachment } from "@/lib/parsing/parse-units";
+import { uploadInvoiceSourcePdf } from "@/lib/invoices/source-storage";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +61,9 @@ export async function GET(request: NextRequest) {
         // Download every parseable attachment once. Each one becomes its own
         // Invoice via planParseUnits — see PR #6 / parse-units.ts for why.
         const downloaded: ParseAttachment[] = [];
+        // Keep raw PDF buffers around so we can persist the source after
+        // the Invoice row is created (we need the invoiceId for the storage path).
+        const pdfBufferByFilename = new Map<string, Buffer>();
 
         for (const attachment of email.attachments) {
           try {
@@ -75,6 +79,7 @@ export async function GET(request: NextRequest) {
                 mimeType: attachment.mimeType,
                 content: pdfText,
               });
+              pdfBufferByFilename.set(attachment.filename, buffer);
             } else if (attachment.mimeType.startsWith("image/")) {
               // Pass image buffer directly — Claude will use vision
               downloaded.push({
@@ -168,6 +173,10 @@ export async function GET(request: NextRequest) {
               : null;
 
           try {
+            const pdfBuffer = unit.attachmentFilename
+              ? pdfBufferByFilename.get(unit.attachmentFilename) ?? null
+              : null;
+
             const invoice = await prisma.invoice.create({
               data: {
                 vendor: mapPlatform(parsed.platform),
@@ -188,11 +197,38 @@ export async function GET(request: NextRequest) {
                 detectedClientId: matchedClient?.id ?? null,
                 detectedClientName: matchedClient?.name ?? rawDetectedClient,
                 detectedVendorName: rawDetectedVendor,
+                // Body-only invoices keep the email body as the source.
+                sourceEmailBodyText: pdfBuffer ? null : email.bodyText ?? null,
                 lineItems: {
                   create: lineItems,
                 },
               },
             });
+
+            // Persist the PDF source (if any) to Supabase Storage now
+            // that we have the invoice id. Non-fatal: a storage failure
+            // shouldn't block the ingest.
+            if (pdfBuffer && unit.attachmentFilename) {
+              try {
+                const uploaded = await uploadInvoiceSourcePdf({
+                  invoiceId: invoice.id,
+                  filename: unit.attachmentFilename,
+                  buffer: pdfBuffer,
+                });
+                await prisma.invoice.update({
+                  where: { id: invoice.id },
+                  data: {
+                    sourcePdfPath: uploaded.path,
+                    sourcePdfFilename: unit.attachmentFilename,
+                    sourcePdfSize: uploaded.size,
+                  },
+                });
+              } catch (uploadError) {
+                console.error(
+                  `Failed to persist invoice source PDF for ${invoice.id}: ${uploadError}`
+                );
+              }
+            }
 
             invoicesCreated++;
             invoiceCreatedForThisEmail = true;

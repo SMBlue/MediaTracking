@@ -22,6 +22,7 @@ import {
   InvoiceClientEdit,
 } from "@/components/invoice-inline-edits";
 import { ClearAllocationButton } from "@/components/clear-allocation-button";
+import { InvoiceSourceButton } from "@/components/invoice-source-button";
 import {
   togglePaidStatus,
   deleteInvoice,
@@ -139,6 +140,12 @@ export default async function InvoiceDetailPage({
           invoiceId={invoice.id}
           currentClientId={invoice.detectedClientId}
           clients={clientOptions}
+        />
+        <InvoiceSourceButton
+          invoiceId={invoice.id}
+          hasSource={Boolean(
+            invoice.sourcePdfPath || invoice.sourceEmailBodyText
+          )}
         />
       </div>
 
