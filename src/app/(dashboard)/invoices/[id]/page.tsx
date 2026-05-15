@@ -13,17 +13,20 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AlertBanner } from "@/components/ui/alert-banner";
 import { Badge } from "@/components/ui/badge";
 import { prisma } from "@/lib/db";
 import { LineItemAssignments } from "@/components/line-item-assignments";
 import { ConcurStatusBadge } from "@/components/concur-status-badge";
 import {
+  InvoicePlatformEdit,
+  InvoiceClientEdit,
+} from "@/components/invoice-inline-edits";
+import { ClearAllocationButton } from "@/components/clear-allocation-button";
+import { InvoiceSourceButton } from "@/components/invoice-source-button";
+import {
   togglePaidStatus,
   deleteInvoice,
   syncInvoiceToConcur,
-  confirmDraft,
-  discardDraft,
 } from "./actions";
 
 const PLATFORMS = [
@@ -72,6 +75,13 @@ async function getActiveMBAs() {
   });
 }
 
+async function getClientOptions() {
+  return prisma.client.findMany({
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  });
+}
+
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -95,7 +105,11 @@ export default async function InvoiceDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [invoice, activeMBAs] = await Promise.all([getInvoice(id), getActiveMBAs()]);
+  const [invoice, activeMBAs, clientOptions] = await Promise.all([
+    getInvoice(id),
+    getActiveMBAs(),
+    getClientOptions(),
+  ]);
 
   const totalAmount = Number(invoice.totalAmount);
   const allocatedTotal = invoice.allocations.reduce(
@@ -104,73 +118,36 @@ export default async function InvoiceDetailPage({
   );
   const unallocated = totalAmount - allocatedTotal;
 
-  function confidenceBadge(confidence: number | null) {
-    if (confidence === null) return null;
-    const variant = confidence >= 0.8 ? "high" : confidence >= 0.5 ? "medium" : "low";
-    const label = confidence >= 0.8 ? "High" : confidence >= 0.5 ? "Medium" : "Low";
-    return (
-      <Badge variant={variant} dot>
-        {label} ({Math.round(confidence * 100)}%)
-      </Badge>
-    );
-  }
 
   return (
     <div className="space-y-6">
-      {invoice.status === "DRAFT" && (
-        <AlertBanner
-          variant="warning"
-          action={
-            <div className="flex gap-2">
-              <form action={confirmDraft}>
-                <input type="hidden" name="id" value={invoice.id} />
-                <Button type="submit">Confirm</Button>
-              </form>
-              <form action={discardDraft}>
-                <input type="hidden" name="id" value={invoice.id} />
-                <Button type="submit" variant="destructive">
-                  Discard
-                </Button>
-              </form>
-            </div>
-          }
-        >
-          <p className="font-medium">Draft Invoice — Pending Review</p>
-          <p className="text-bs-dark-gray text-sm">
-            This invoice was auto-parsed from email. Review the details and
-            confirm or discard.
-            {invoice.parseConfidence !== null && (
-              <> Parse confidence: {confidenceBadge(invoice.parseConfidence)}</>
-            )}
-          </p>
-        </AlertBanner>
-      )}
-
       <PageHeader
         title={invoice.invoiceNumber}
-        description={`${PLATFORMS.find((p) => p.value === invoice.vendor)?.label || invoice.vendor} \u00b7 ${formatDate(invoice.invoiceDate)}`}
+        description={formatDate(invoice.invoiceDate)}
         breadcrumbs={[
           { label: "Dashboard", href: "/" },
           { label: "Vendor Invoices", href: "/invoices" },
           { label: invoice.invoiceNumber },
         ]}
-        actions={
-          <form action={togglePaidStatus}>
-            <input type="hidden" name="id" value={invoice.id} />
-            <input
-              type="hidden"
-              name="currentStatus"
-              value={String(invoice.isPaid)}
-            />
-            <Button
-              type="submit"
-              variant={invoice.isPaid ? "outline" : "default"}
-            >
-              {invoice.isPaid ? "Mark as Unpaid" : "Mark as Paid"}
-            </Button>
-          </form>
-        }
       />
+
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+        <InvoicePlatformEdit
+          invoiceId={invoice.id}
+          currentPlatform={invoice.vendor}
+        />
+        <InvoiceClientEdit
+          invoiceId={invoice.id}
+          currentClientId={invoice.detectedClientId}
+          clients={clientOptions}
+        />
+        <InvoiceSourceButton
+          invoiceId={invoice.id}
+          hasSource={Boolean(
+            invoice.sourcePdfPath || invoice.sourceEmailBodyText
+          )}
+        />
+      </div>
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
@@ -187,17 +164,29 @@ export default async function InvoiceDetailPage({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Allocated
+              Allocation
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">
-              {formatCurrency(allocatedTotal)}
-            </p>
-            {unallocated > 0.01 && (
-              <p className="text-sm text-bs-coral">
-                {formatCurrency(unallocated)} unallocated
-              </p>
+            {unallocated > 0.01 ? (
+              <>
+                <p className="text-2xl font-bold text-bs-coral">Unallocated</p>
+                <p className="text-sm text-muted-foreground">
+                  {formatCurrency(allocatedTotal)} of {formatCurrency(totalAmount)}{" "}
+                  &middot; {formatCurrency(unallocated)} remaining
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-2xl font-bold text-bs-teal-dark">
+                  Fully allocated
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {formatCurrency(allocatedTotal)} across{" "}
+                  {invoice.allocations.length}{" "}
+                  {invoice.allocations.length === 1 ? "MBA" : "MBAs"}
+                </p>
+              </>
             )}
           </CardContent>
         </Card>
@@ -225,7 +214,98 @@ export default async function InvoiceDetailPage({
         </Card>
       </div>
 
-      {/* Concur sync */}
+      {/* Line Items */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            Line Items
+            {invoice.lineItems.length > 0 && (
+              <Badge variant="info">
+                {invoice.lineItems.length}
+              </Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <LineItemAssignments
+            invoiceId={invoice.id}
+            lineItems={invoice.lineItems.map((item) => ({
+              id: item.id,
+              campaignName: item.campaignName,
+              platform: item.platform,
+              amount: Number(item.amount),
+              mbaId: item.mbaId,
+              confidence: item.confidence,
+            }))}
+            activeMBAs={activeMBAs.map((mba) => ({
+              id: mba.id,
+              mbaNumber: mba.mbaNumber,
+              name: mba.name,
+              client: { name: mba.client.name },
+            }))}
+            totalAmount={totalAmount}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>MBA Allocations</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {invoice.allocations.length === 0 ? (
+            <p className="text-muted-foreground">
+              This invoice has not been allocated to any MBAs.
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Client</TableHead>
+                  <TableHead>MBA</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="w-10"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {invoice.allocations.map((alloc) => (
+                  <TableRow key={alloc.id}>
+                    <TableCell>{alloc.mba.client.name}</TableCell>
+                    <TableCell>
+                      <Link
+                        href={`/mbas/${alloc.mba.id}`}
+                        className="hover:underline"
+                      >
+                        {alloc.mba.mbaNumber} - {alloc.mba.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatCurrency(Number(alloc.amount))}
+                    </TableCell>
+                    <TableCell>
+                      <ClearAllocationButton
+                        allocationId={alloc.id}
+                        mbaLabel={`${alloc.mba.mbaNumber} - ${alloc.mba.name}`}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+                <TableRow className="font-bold">
+                  <TableCell colSpan={2}>Total Allocated</TableCell>
+                  <TableCell className="text-right">
+                    {formatCurrency(allocatedTotal)}
+                  </TableCell>
+                  <TableCell />
+                </TableRow>
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Concur push — sits below allocations so users land here after
+          confirming "Fully allocated" above. The "Push to Concur" click
+          is the explicit signal that allocation is done. */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between gap-2">
@@ -266,6 +346,12 @@ export default async function InvoiceDetailPage({
                       ? "outline"
                       : "default"
                   }
+                  disabled={unallocated > 0.01}
+                  title={
+                    unallocated > 0.01
+                      ? "Allocate every dollar before pushing"
+                      : undefined
+                  }
                 >
                   {invoice.concurSyncStatus === "SYNC_FAILED"
                     ? "Retry sync"
@@ -275,88 +361,6 @@ export default async function InvoiceDetailPage({
                 </Button>
               </form>
             )}
-        </CardContent>
-      </Card>
-
-      {/* Line Items */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            Line Items
-            {invoice.lineItems.length > 0 && (
-              <Badge variant="info">
-                {invoice.lineItems.length}
-              </Badge>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <LineItemAssignments
-            invoiceId={invoice.id}
-            lineItems={invoice.lineItems.map((item) => ({
-              id: item.id,
-              campaignName: item.campaignName,
-              platform: item.platform,
-              amount: Number(item.amount),
-              mbaId: item.mbaId,
-              confidence: item.confidence,
-            }))}
-            activeMBAs={activeMBAs.map((mba) => ({
-              id: mba.id,
-              mbaNumber: mba.mbaNumber,
-              name: mba.name,
-              client: { name: mba.client.name },
-            }))}
-            isDraft={invoice.status === "DRAFT"}
-            totalAmount={totalAmount}
-          />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>MBA Allocations</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {invoice.allocations.length === 0 ? (
-            <p className="text-muted-foreground">
-              This invoice has not been allocated to any MBAs.
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Client</TableHead>
-                  <TableHead>MBA</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {invoice.allocations.map((alloc) => (
-                  <TableRow key={alloc.id}>
-                    <TableCell>{alloc.mba.client.name}</TableCell>
-                    <TableCell>
-                      <Link
-                        href={`/mbas/${alloc.mba.id}`}
-                        className="hover:underline"
-                      >
-                        {alloc.mba.mbaNumber} - {alloc.mba.name}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatCurrency(Number(alloc.amount))}
-                    </TableCell>
-                  </TableRow>
-                ))}
-                <TableRow className="font-bold">
-                  <TableCell colSpan={2}>Total Allocated</TableCell>
-                  <TableCell className="text-right">
-                    {formatCurrency(allocatedTotal)}
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          )}
         </CardContent>
       </Card>
 
@@ -371,20 +375,45 @@ export default async function InvoiceDetailPage({
         </Card>
       )}
 
-      <Card>
+      <Card className="border-bs-coral/30">
         <CardHeader>
-          <CardTitle>Danger Zone</CardTitle>
+          <CardTitle className="text-bs-coral-dark">Danger Zone</CardTitle>
         </CardHeader>
-        <CardContent>
-          <form action={deleteInvoice}>
-            <input type="hidden" name="id" value={invoice.id} />
-            <p className="text-sm text-muted-foreground mb-4">
-              Deleting this invoice will also remove all MBA allocations.
-            </p>
-            <Button type="submit" variant="destructive">
-              Delete Invoice
-            </Button>
-          </form>
+        <CardContent className="space-y-4">
+          <div className="flex items-start justify-between gap-4 pb-4 border-b border-border">
+            <div>
+              <p className="font-medium text-sm">Mark as paid</p>
+              <p className="text-sm text-muted-foreground">
+                Paid status normally flows from NetSuite. Only use this when
+                you need to override it manually.
+              </p>
+            </div>
+            <form action={togglePaidStatus}>
+              <input type="hidden" name="id" value={invoice.id} />
+              <input
+                type="hidden"
+                name="currentStatus"
+                value={String(invoice.isPaid)}
+              />
+              <Button type="submit" variant="outline" size="sm">
+                {invoice.isPaid ? "Mark as Unpaid" : "Mark as Paid"}
+              </Button>
+            </form>
+          </div>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="font-medium text-sm">Delete invoice</p>
+              <p className="text-sm text-muted-foreground">
+                Removes the invoice and all of its MBA allocations.
+              </p>
+            </div>
+            <form action={deleteInvoice}>
+              <input type="hidden" name="id" value={invoice.id} />
+              <Button type="submit" variant="destructive" size="sm">
+                Delete invoice
+              </Button>
+            </form>
+          </div>
         </CardContent>
       </Card>
     </div>

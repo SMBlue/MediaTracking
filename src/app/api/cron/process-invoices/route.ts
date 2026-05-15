@@ -13,6 +13,8 @@ import {
 } from "@/lib/pdf-parser";
 import { matchClient, mapPlatform } from "@/lib/invoice-matching";
 import { matchLineItemsToMBAs } from "@/lib/mba-matching";
+import { planParseUnits, type ParseAttachment } from "@/lib/parsing/parse-units";
+import { uploadInvoiceSourcePdf } from "@/lib/invoices/source-storage";
 
 export const dynamic = "force-dynamic";
 
@@ -56,13 +58,12 @@ export async function GET(request: NextRequest) {
 
     for (const email of emails) {
       try {
-        // Prepare attachments for Claude — download and extract text from PDFs,
-        // pass images as raw buffers for vision
-        const attachmentData: {
-          filename: string;
-          mimeType: string;
-          content: string | Buffer;
-        }[] = [];
+        // Download every parseable attachment once. Each one becomes its own
+        // Invoice via planParseUnits — see PR #6 / parse-units.ts for why.
+        const downloaded: ParseAttachment[] = [];
+        // Keep raw PDF buffers around so we can persist the source after
+        // the Invoice row is created (we need the invoiceId for the storage path).
+        const pdfBufferByFilename = new Map<string, Buffer>();
 
         for (const attachment of email.attachments) {
           try {
@@ -73,14 +74,15 @@ export async function GET(request: NextRequest) {
 
             if (attachment.mimeType === "application/pdf") {
               const pdfText = await extractPdfText(buffer);
-              attachmentData.push({
+              downloaded.push({
                 filename: attachment.filename,
                 mimeType: attachment.mimeType,
                 content: pdfText,
               });
+              pdfBufferByFilename.set(attachment.filename, buffer);
             } else if (attachment.mimeType.startsWith("image/")) {
               // Pass image buffer directly — Claude will use vision
-              attachmentData.push({
+              downloaded.push({
                 filename: attachment.filename,
                 mimeType: attachment.mimeType,
                 content: buffer,
@@ -96,106 +98,158 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        // Let Claude analyze the full email context + attachments
-        const analysis = await analyzeEmailWithClaude(
-          {
-            subject: email.subject,
-            from: email.from,
-            bodyText: email.bodyText,
-          },
-          attachmentData
-        );
+        const parseUnits = planParseUnits(downloaded);
+        let invoiceCreatedForThisEmail = false;
 
-        if (analysis.classification === "not_invoice") {
-          console.log(
-            `Skipped email ${email.id} (${email.subject}): ${analysis.reason}`
+        for (const unit of parseUnits) {
+          const analysis = await analyzeEmailWithClaude(
+            {
+              subject: email.subject,
+              from: email.from,
+              bodyText: email.bodyText,
+            },
+            unit.attachments
           );
-          emailsSkipped++;
-          await markEmailProcessed(email.id);
-          emailsProcessed++;
-          continue;
-        }
 
-        // It's an invoice — create a draft
-        const parsed = analysis.invoice!;
+          if (analysis.classification === "not_invoice") {
+            console.log(
+              `Skipped attachment ${unit.attachmentFilename ?? "(body)"} on email ${email.id} (${email.subject}): ${analysis.reason}`
+            );
+            continue;
+          }
 
-        // Coerce numeric fields — Claude may return strings or null
-        const totalAmount = Number(parsed.totalAmount) || 0;
-        const invoiceDate = parsed.invoiceDate
-          ? new Date(parsed.invoiceDate)
-          : new Date();
-        const invoiceNumber =
-          String(parsed.invoiceNumber || "").trim() ||
-          `EMAIL-${email.id}-${Date.now()}`;
+          const parsed = analysis.invoice!;
 
-        // Skip if date is invalid
-        if (isNaN(invoiceDate.getTime())) {
-          console.log(
-            `Skipped email ${email.id}: invalid invoice date "${parsed.invoiceDate}"`
+          // Coerce numeric fields — Claude may return strings or null
+          const totalAmount = Number(parsed.totalAmount) || 0;
+          const invoiceDate = parsed.invoiceDate
+            ? new Date(parsed.invoiceDate)
+            : new Date();
+          const invoiceNumber =
+            String(parsed.invoiceNumber || "").trim() ||
+            // Suffix with filename so two parsed attachments on the same email
+            // without numbers don't collide on the (vendor, invoiceNumber) unique.
+            `EMAIL-${email.id}-${unit.attachmentFilename ?? "body"}-${Date.now()}`;
+
+          if (isNaN(invoiceDate.getTime())) {
+            console.log(
+              `Skipped attachment ${unit.attachmentFilename ?? "(body)"} on email ${email.id}: invalid invoice date "${parsed.invoiceDate}"`
+            );
+            continue;
+          }
+
+          const matchedClient = await matchClient(parsed.clientName);
+
+          const parsedLineItems = (parsed.lineItems || [])
+            .filter((item) => item.campaignName)
+            .map((item) => ({
+              campaignName: String(item.campaignName),
+              platform: item.platform ? String(item.platform) : null,
+              amount: Number(item.amount) || 0,
+              confidence: Number(item.confidence) || 0,
+            }));
+
+          const matchedLineItems = await matchLineItemsToMBAs(
+            parsedLineItems,
+            matchedClient?.id || null,
+            mapPlatform(parsed.platform),
+            invoiceDate
           );
-          emailsSkipped++;
-          await markEmailProcessed(email.id);
-          emailsProcessed++;
-          continue;
-        }
 
-        // Try to match client
-        const matchedClient = await matchClient(parsed.clientName);
-
-        // Coerce line item amounts
-        const parsedLineItems = (parsed.lineItems || [])
-          .filter((item) => item.campaignName)
-          .map((item) => ({
-            campaignName: String(item.campaignName),
-            platform: item.platform ? String(item.platform) : null,
-            amount: Number(item.amount) || 0,
-            confidence: Number(item.confidence) || 0,
+          const lineItems = matchedLineItems.map((item) => ({
+            campaignName: item.campaignName,
+            platform: item.platform,
+            amount: item.amount,
+            confidence: item.confidence,
+            mbaId: item.mbaId || undefined,
           }));
 
-        // Auto-match line items to MBAs
-        const matchedLineItems = await matchLineItemsToMBAs(
-          parsedLineItems,
-          matchedClient?.id || null,
-          mapPlatform(parsed.platform),
-          invoiceDate
-        );
+          const rawDetectedClient = parsed.clientName
+            ? String(parsed.clientName).trim() || null
+            : null;
+          const rawDetectedVendor =
+            (parsed as { vendorName?: unknown }).vendorName
+              ? String((parsed as { vendorName?: unknown }).vendorName).trim() || null
+              : null;
 
-        const lineItems = matchedLineItems.map((item) => ({
-          campaignName: item.campaignName,
-          platform: item.platform,
-          amount: item.amount,
-          confidence: item.confidence,
-          mbaId: item.mbaId || undefined,
-        }));
+          try {
+            const pdfBuffer = unit.attachmentFilename
+              ? pdfBufferByFilename.get(unit.attachmentFilename) ?? null
+              : null;
 
-        const invoice = await prisma.invoice.create({
-          data: {
-            vendor: mapPlatform(parsed.platform),
-            invoiceNumber,
-            invoiceDate,
-            totalAmount,
-            status: "DRAFT",
-            sourceType: "EMAIL_PARSED",
-            emailMessageId: email.id,
-            emailSubject: email.subject,
-            emailReceivedAt: email.receivedAt,
-            parseConfidence: Number(parsed.overallConfidence) || 0,
-            notes: matchedClient
-              ? `Auto-matched client: ${matchedClient.name}`
-              : parsed.clientName
-                ? `Detected client: ${parsed.clientName} (no match found)`
-                : undefined,
-            lineItems: {
-              create: lineItems,
-            },
-          },
-        });
+            const invoice = await prisma.invoice.create({
+              data: {
+                vendor: mapPlatform(parsed.platform),
+                invoiceNumber,
+                invoiceDate,
+                totalAmount,
+                // Email-parsed invoices land in CONFIRMED directly; the
+                // separate DRAFT review queue is being retired (PR #11).
+                // Low confidence still surfaces via parseConfidence on
+                // the invoice detail page so users can spot-check.
+                status: "CONFIRMED",
+                sourceType: "EMAIL_PARSED",
+                emailMessageId: email.id,
+                attachmentFilename: unit.attachmentFilename,
+                emailSubject: email.subject,
+                emailReceivedAt: email.receivedAt,
+                parseConfidence: Number(parsed.overallConfidence) || 0,
+                detectedClientId: matchedClient?.id ?? null,
+                detectedClientName: matchedClient?.name ?? rawDetectedClient,
+                detectedVendorName: rawDetectedVendor,
+                // Body-only invoices keep the email body as the source.
+                sourceEmailBodyText: pdfBuffer ? null : email.bodyText ?? null,
+                lineItems: {
+                  create: lineItems,
+                },
+              },
+            });
 
-        invoicesCreated++;
-        console.log(
-          `Created draft invoice ${invoice.id} from email ${email.id} (${invoiceNumber})`
-        );
+            // Persist the PDF source (if any) to Supabase Storage now
+            // that we have the invoice id. Non-fatal: a storage failure
+            // shouldn't block the ingest.
+            if (pdfBuffer && unit.attachmentFilename) {
+              try {
+                const uploaded = await uploadInvoiceSourcePdf({
+                  invoiceId: invoice.id,
+                  filename: unit.attachmentFilename,
+                  buffer: pdfBuffer,
+                });
+                await prisma.invoice.update({
+                  where: { id: invoice.id },
+                  data: {
+                    sourcePdfPath: uploaded.path,
+                    sourcePdfFilename: unit.attachmentFilename,
+                    sourcePdfSize: uploaded.size,
+                  },
+                });
+              } catch (uploadError) {
+                console.error(
+                  `Failed to persist invoice source PDF for ${invoice.id}: ${uploadError}`
+                );
+              }
+            }
 
+            invoicesCreated++;
+            invoiceCreatedForThisEmail = true;
+            console.log(
+              `Created invoice ${invoice.id} from email ${email.id} attachment ${unit.attachmentFilename ?? "(body)"} (${invoiceNumber})`
+            );
+          } catch (createError: unknown) {
+            const errStr = String(createError);
+            if (errStr.includes("Unique constraint")) {
+              console.log(
+                `Skipped duplicate invoice on email ${email.id} attachment ${unit.attachmentFilename ?? "(body)"} (${invoiceNumber})`
+              );
+              continue;
+            }
+            throw createError;
+          }
+        }
+
+        if (!invoiceCreatedForThisEmail) {
+          emailsSkipped++;
+        }
         await markEmailProcessed(email.id);
         emailsProcessed++;
       } catch (emailError: unknown) {

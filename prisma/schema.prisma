@@ -60,12 +60,14 @@ model VerificationToken {
 // Application models
 
 model Client {
-  id        String   @id @default(cuid())
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  name        String
+  nameAliases String[] @default([])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  mbas      MBA[]
+  mbas              MBA[]
+  detectedInvoices  Invoice[] @relation("DetectedClient")
 }
 
 model MBA {
@@ -120,7 +122,6 @@ model MBA {
 }
 
 enum MBAStatus {
-  DRAFT
   ACTIVE
   RECONCILING
   CLOSED
@@ -151,12 +152,28 @@ model Invoice {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  // Email ingestion fields
-  emailMessageId  String?   @unique
-  emailSubject    String?
-  emailReceivedAt DateTime?
-  parseConfidence Float?
-  parseErrors     String?
+  // Email ingestion fields. One Invoice row per email attachment, so the
+  // uniqueness is on the compound (emailMessageId, attachmentFilename).
+  // Body-only invoices use a null attachmentFilename.
+  emailMessageId     String?
+  attachmentFilename String?
+  emailSubject       String?
+  emailReceivedAt    DateTime?
+  parseConfidence    Float?
+  parseErrors        String?
+
+  // Parsed entity hints (surfaced from ingestion; user-correctable on detail page)
+  detectedClientId   String?
+  detectedClientName String?
+  detectedVendorName String?
+
+  // Persisted source (Supabase Storage: invoice-sources bucket).
+  // PDFs land at sourcePdfPath; body-only invoices store the email
+  // body text directly. Both null until ingest persists.
+  sourcePdfPath       String?
+  sourcePdfFilename   String?
+  sourcePdfSize       Int?
+  sourceEmailBodyText String?
 
   // Concur integration
   concurInvoiceId     String?          @unique // PaymentRequestId from Concur
@@ -166,12 +183,15 @@ model Invoice {
 
   allocations   InvoiceAllocation[]
   lineItems     VendorInvoiceLineItem[]
+  detectedClient Client? @relation("DetectedClient", fields: [detectedClientId], references: [id], onDelete: SetNull)
 
   @@unique([vendor, invoiceNumber])
+  @@unique([emailMessageId, attachmentFilename])
+  @@index([detectedClientId])
+  @@index([emailMessageId])
 }
 
 enum InvoiceStatus {
-  DRAFT
   CONFIRMED
 }
 

@@ -12,6 +12,9 @@
 
 # testing
 /coverage
+/playwright-report
+/test-results
+/playwright/.cache
 
 # next.js
 /.next/
@@ -23,6 +26,13 @@
 # misc
 .DS_Store
 *.pem
+
+# local working materials in docs/ — Zoom recordings and audio
+# transcripts that live alongside the persisted docs but aren't
+# meant to ship with the repo.
+docs/*.vtt
+docs/*.m4a
+docs/audio*.txt
 
 # debug
 npm-debug.log*

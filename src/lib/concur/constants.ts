@@ -16,6 +16,12 @@ export const CONCUR_API_PATHS = {
   LIST_BULK: (listId: string) => `/list/v4/lists/${listId}/bulk`,
   INVOICE_CREATE: "/api/v3.0/invoice/paymentrequest",
   INVOICE_DIGEST: "/api/v3.0/invoice/paymentrequestdigests",
+  // See docs/concur-apgl-routing.md. Used by advanceToAPGL() to move a
+  // newly-created Payment Request from the Unassigned Queue directly
+  // into APGL Coding. The exact payload is configured by env until
+  // confirmed in the BSD sandbox.
+  INVOICE_WF_ACTION: (paymentRequestId: string) =>
+    `/api/v3.0/invoice/paymentrequestwfaction/${paymentRequestId}`,
 } as const;
 
 /**

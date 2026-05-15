@@ -20,6 +20,7 @@ import { AlertBanner } from "@/components/ui/alert-banner";
 import { Badge } from "@/components/ui/badge";
 import { AddClientModal } from "@/components/add-client-modal";
 import { ClientFilter } from "./client-filter";
+import { SavedViewsMenu } from "@/components/saved-views-menu";
 
 async function getClients() {
   return prisma.client.findMany({
@@ -127,6 +128,8 @@ export default async function MBAsPage({
         )}
       </div>
 
+      <SavedViewsMenu scope="mbas" />
+
       {needsReconCount > 0 && (
         <AlertBanner variant="info">
           <p>
@@ -156,7 +159,7 @@ export default async function MBAsPage({
                 <TableHead>NS</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead className="text-right">Budget</TableHead>
-                <TableHead className="text-right">Invoiced</TableHead>
+                <TableHead className="text-right">Vendor Invoiced</TableHead>
                 <TableHead className="text-right">Remaining</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Client Paid</TableHead>

@@ -12,6 +12,7 @@ import { logAudit } from "../audit";
 import { getConcurClient } from "./client";
 import { CONCUR_API_PATHS } from "./constants";
 import { invoiceToConcurPaymentRequest } from "./mappers";
+import { advanceToAPGL } from "./workflow";
 import type { ConcurInvoiceResponse } from "./types";
 
 /**
@@ -97,6 +98,20 @@ export async function pushInvoiceToConcur(
     CONCUR_API_PATHS.INVOICE_CREATE,
     concurInvoice
   );
+
+  // Advance the workflow past the Unassigned Queue when configured.
+  // No-op (and no exception) when the env flag is unset, so existing
+  // behavior is preserved until the BSD sandbox call confirms the right
+  // payload. See docs/concur-apgl-routing.md.
+  try {
+    await advanceToAPGL(response.ID);
+  } catch (advanceError) {
+    console.error(
+      `advanceToAPGL failed for ${response.ID}: ${advanceError}. Payment Request was still created.`
+    );
+    // Intentionally non-fatal — the create succeeded and finance can
+    // advance the request manually as they do today.
+  }
 
   // Update invoice with Concur ID
   await prisma.invoice.update({

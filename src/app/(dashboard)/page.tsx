@@ -5,6 +5,7 @@ import { ArrowUpRight } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { KPICard } from "@/components/kpi-card";
 import { AlertBanner } from "@/components/ui/alert-banner";
+import { getUnallocatedInvoices } from "@/lib/invoices";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -36,27 +37,37 @@ interface ClientRow {
 }
 
 async function getOverviewData() {
-  const [activeMBAs, totalMBACount, lastEmailSync, lastNetsuiteSync, draftCount] =
-    await Promise.all([
-      prisma.mBA.findMany({
-        where: { status: "ACTIVE" },
-        include: {
-          client: { select: { id: true, name: true } },
-          invoiceAllocations: true,
-          changeOrders: true,
-          creditsIn: true,
-          creditsOut: true,
-        },
-      }),
-      prisma.mBA.count(),
-      prisma.emailSyncLog
-        .findFirst({ orderBy: { startedAt: "desc" } })
-        .catch(() => null),
-      prisma.netsuiteSyncLog
-        .findFirst({ orderBy: { startedAt: "desc" } })
-        .catch(() => null),
-      prisma.invoice.count({ where: { status: "DRAFT" } }).catch(() => 0),
-    ]);
+  const [
+    activeMBAs,
+    totalMBACount,
+    lastEmailSync,
+    lastNetsuiteSync,
+    unallocated,
+    clientInvoicedAgg,
+  ] = await Promise.all([
+    prisma.mBA.findMany({
+      where: { status: "ACTIVE" },
+      include: {
+        client: { select: { id: true, name: true } },
+        invoiceAllocations: true,
+        changeOrders: true,
+        creditsIn: true,
+        creditsOut: true,
+      },
+    }),
+    prisma.mBA.count(),
+    prisma.emailSyncLog
+      .findFirst({ orderBy: { startedAt: "desc" } })
+      .catch(() => null),
+    prisma.netsuiteSyncLog
+      .findFirst({ orderBy: { startedAt: "desc" } })
+      .catch(() => null),
+    getUnallocatedInvoices().catch(() => ({ count: 0, unallocatedAmount: 0 })),
+    prisma.netsuiteClientInvoice
+      .aggregate({ _sum: { amount: true } })
+      .catch(() => ({ _sum: { amount: null } })),
+  ]);
+  const invoicedToClient = Number(clientInvoicedAgg._sum.amount ?? 0);
 
   const clientMap = new Map<string, ClientRow>();
   let needsReconCount = 0;
@@ -129,7 +140,8 @@ async function getOverviewData() {
     netCashFlow,
     lastEmailSync,
     lastNetsuiteSync,
-    draftCount,
+    unallocated,
+    invoicedToClient,
   };
 }
 
@@ -179,7 +191,8 @@ export default async function OverviewPage() {
     netCashFlow,
     lastEmailSync,
     lastNetsuiteSync,
-    draftCount,
+    unallocated,
+    invoicedToClient,
   } = data;
 
   return (
@@ -196,7 +209,7 @@ export default async function OverviewPage() {
 
       {/* KPI strip */}
       <section>
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <KPICard
             label="Active MBAs"
             value={activeCount}
@@ -216,6 +229,12 @@ export default async function OverviewPage() {
             accentColor="neutral"
           />
           <KPICard
+            label="Invoiced to Client"
+            value={fmt(invoicedToClient)}
+            subtitle="From NetSuite"
+            accentColor="neutral"
+          />
+          <KPICard
             label="Client Paid"
             value={fmt(totals.clientPaid)}
             subtitle={`${pct(totals.clientPaid, totals.effectiveBudget)} of budget`}
@@ -231,8 +250,28 @@ export default async function OverviewPage() {
       </section>
 
       {/* Conditional alerts */}
-      {(needsReconCount > 0 || totals.outstanding > 0) && (
+      {(needsReconCount > 0 ||
+        totals.outstanding > 0 ||
+        unallocated.count > 0) && (
         <section className="space-y-2">
+          {unallocated.count > 0 && (
+            <AlertBanner
+              variant="warning"
+              action={
+                <Button asChild variant="link" className="p-0 h-auto">
+                  <Link href="/invoices?paid=unpaid">View invoices</Link>
+                </Button>
+              }
+            >
+              <p>
+                <strong>{unallocated.count}</strong> vendor invoice
+                {unallocated.count === 1 ? "" : "s"} pending allocation
+                {unallocated.unallocatedAmount > 0 && (
+                  <> ({fmt(unallocated.unallocatedAmount)} unallocated)</>
+                )}
+              </p>
+            </AlertBanner>
+          )}
           {needsReconCount > 0 && (
             <AlertBanner
               variant="info"
@@ -409,11 +448,6 @@ export default async function OverviewPage() {
                   ? [
                       { label: "Processed", value: lastEmailSync.emailsProcessed },
                       { label: "Created", value: lastEmailSync.invoicesCreated },
-                      {
-                        label: "Drafts",
-                        value: draftCount,
-                        href: draftCount > 0 ? "/invoices/drafts" : undefined,
-                      },
                     ]
                   : []
               }

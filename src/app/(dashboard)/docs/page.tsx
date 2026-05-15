@@ -344,7 +344,7 @@ function QuickStart() {
         <Step n={3} auto={false} title="Review drafts, allocate to MBAs">
           <p>
             Open{" "}
-            <Link href="/invoices/drafts" className="underline">
+            <Link href="/invoices" className="underline">
               Vendor Invoices → Drafts
             </Link>
             , confirm the parse, and assign each line item to the MBA it
@@ -497,7 +497,7 @@ function Automation() {
           },
           {
             lane: "auto",
-            label: "Draft invoice appears in /invoices/drafts",
+            label: "Draft invoice appears in /invoices",
             detail: "Sidebar nav shows a red draft count badge.",
           },
           {
@@ -816,7 +816,7 @@ function PageGuide() {
       <PageDoc
         icon={Receipt}
         title="Draft invoices"
-        href="/invoices/drafts"
+        href="/invoices"
         purpose="Bulk-review every auto-parsed invoice from email."
       >
         <ul className="list-disc pl-5 space-y-1">
@@ -1121,7 +1121,7 @@ function InvoiceFlow() {
         </Step>
         <Step n={3} auto={false} title="Review the draft">
           <p>
-            Open <Link href="/invoices/drafts" className="underline">Vendor
+            Open <Link href="/invoices" className="underline">Vendor
             Invoices → Drafts</Link>. Skim the parse, fix any miscategorised
             lines, then Confirm or Discard. High-confidence drafts can be
             bulk-confirmed.
@@ -1234,7 +1234,7 @@ function AdsTeamGuide() {
         <Callout tone="info" title="Help triage drafts">
           <p>
             If a vendor sends a multi-MBA invoice you recognise, jump into{" "}
-            <Link href="/invoices/drafts" className="underline">drafts</Link>{" "}
+            <Link href="/invoices" className="underline">drafts</Link>{" "}
             and allocate the lines — finance can’t always tell which campaign
             belongs to which MBA without you.
           </p>

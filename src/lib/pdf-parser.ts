@@ -1,5 +1,10 @@
 import Anthropic from "@anthropic-ai/sdk";
-import pdfParse from "pdf-parse";
+// Import the inner module directly — pdf-parse's index.js executes a
+// debug block at module load that does fs.readFileSync against its
+// own test fixture, which doesn't exist in the Vercel serverless
+// bundle and crashed both /api/cron/process-contracts and
+// /api/cron/process-invoices with ENOENT starting 2026-05-08.
+import pdfParse from "pdf-parse/lib/pdf-parse.js";
 
 export function isClaudeConfigured(): boolean {
   return !!process.env.ANTHROPIC_API_KEY;

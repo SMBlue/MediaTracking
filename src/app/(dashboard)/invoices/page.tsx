@@ -16,7 +16,19 @@ import {
 import { AlertBanner } from "@/components/ui/alert-banner";
 import { Badge } from "@/components/ui/badge";
 import { ConcurStatusBadge } from "@/components/concur-status-badge";
+import { InvoiceFilters } from "@/components/invoice-filters";
+import { SortableHeader } from "@/components/sortable-header";
+import { SavedViewsMenu } from "@/components/saved-views-menu";
+import { SyncNowButton } from "@/components/sync-now-button";
+import { SyncCadence } from "@/components/sync-cadence";
 import { prisma } from "@/lib/db";
+import {
+  parseInvoiceListParams,
+  paramsToInvoiceWhere,
+  paramsToInvoiceOrderBy,
+  type InvoiceListParams,
+} from "@/lib/invoice-list-params";
+import { PLATFORM_TO_VENDOR } from "@/lib/concur/constants";
 
 const PLATFORMS = [
   { value: "GOOGLE_ADS", label: "Google Ads" },
@@ -27,29 +39,30 @@ const PLATFORMS = [
   { value: "OTHER", label: "Other" },
 ];
 
-async function getInvoices() {
+async function getInvoices(params: InvoiceListParams) {
   return prisma.invoice.findMany({
-    where: { status: "CONFIRMED" },
+    where: paramsToInvoiceWhere(params),
     include: {
       allocations: {
         include: {
           mba: {
-            include: {
-              client: true,
-            },
+            include: { client: true },
           },
         },
       },
+      detectedClient: { select: { id: true, name: true } },
       _count: { select: { lineItems: true } },
     },
-    orderBy: { invoiceDate: "desc" },
+    orderBy: paramsToInvoiceOrderBy(params),
   });
 }
 
-
-
-async function getDraftCount() {
-  return prisma.invoice.count({ where: { status: "DRAFT" } });
+async function getClientOptions() {
+  const rows = await prisma.client.findMany({
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  });
+  return rows.map((c) => ({ value: c.id, label: c.name }));
 }
 
 function formatCurrency(amount: number) {
@@ -69,10 +82,17 @@ function formatDate(date: Date) {
   });
 }
 
-export default async function InvoicesPage() {
-  const [invoices, draftCount] = await Promise.all([
-    getInvoices(),
-    getDraftCount(),
+type SearchParams = Record<string, string | string[] | undefined>;
+
+export default async function InvoicesPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const params = parseInvoiceListParams(await searchParams);
+  const [invoices, clientOptions] = await Promise.all([
+    getInvoices(params),
+    getClientOptions(),
   ]);
 
   const totalUnpaid = invoices
@@ -83,32 +103,36 @@ export default async function InvoicesPage() {
     .filter((inv) => inv.type === "CREDIT_NOTE")
     .reduce((sum, inv) => sum + Number(inv.totalAmount), 0);
 
+  // URLSearchParams pre-built for sortable header links — we only need
+  // to preserve the filter params, not the existing sort.
+  const preserve = new URLSearchParams();
+  if (params.clientId) preserve.set("client", params.clientId);
+  if (params.platform) preserve.set("platform", params.platform);
+  if (params.paid) preserve.set("paid", params.paid);
+  if (params.vendorContains) preserve.set("vendor", params.vendorContains);
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Vendor Invoices"
         description="Track invoices from platforms (Google, Meta, etc.) and payment status"
         actions={
-          <Button asChild>
-            <Link href="/invoices/new">+ New Invoice</Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <SyncNowButton />
+            <Button asChild>
+              <Link href="/invoices/new">+ New Invoice</Link>
+            </Button>
+          </div>
         }
       />
+      <SyncCadence />
 
-      {draftCount > 0 && (
-        <AlertBanner
-          variant="warning"
-          action={
-            <Button asChild variant="outline" size="sm">
-              <Link href="/invoices/drafts">Review Drafts</Link>
-            </Button>
-          }
-        >
-          <p>
-            <strong>{draftCount}</strong> draft invoice{draftCount !== 1 ? "s" : ""} pending review
-          </p>
-        </AlertBanner>
-      )}
+      <InvoiceFilters
+        clients={clientOptions}
+        platforms={PLATFORMS}
+      />
+
+      <SavedViewsMenu scope="invoices" />
 
       {(totalUnpaid > 0 || totalCredits > 0) && (
         <div className="flex gap-4">
@@ -132,8 +156,8 @@ export default async function InvoicesPage() {
       {invoices.length === 0 ? (
         <EmptyState
           icon={Receipt}
-          title="No invoices yet"
-          description="Record your first vendor invoice to start tracking spend."
+          title="No invoices match"
+          description="Try clearing filters, or record a new vendor invoice."
           action={
             <Button asChild>
               <Link href="/invoices/new">+ New Invoice</Link>
@@ -143,13 +167,52 @@ export default async function InvoicesPage() {
       ) : (
         <div className="border border-border rounded-2xl bg-card overflow-hidden">
           <Table>
-            <TableHeader>
+            <TableHeader className="sticky top-0 z-10 bg-card">
               <TableRow className="hover:bg-transparent">
                 <TableHead>Type</TableHead>
-                <TableHead>Invoice #</TableHead>
-                <TableHead>Platform</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="text-right">Total</TableHead>
+                <TableHead>
+                  <SortableHeader
+                    field="invoiceNumber"
+                    label="Invoice #"
+                    currentSort={params.sort}
+                    currentDir={params.dir}
+                    preserveParams={preserve}
+                    basePath="/invoices"
+                  />
+                </TableHead>
+                <TableHead>Vendor</TableHead>
+                <TableHead>
+                  <SortableHeader
+                    field="vendor"
+                    label="Platform"
+                    currentSort={params.sort}
+                    currentDir={params.dir}
+                    preserveParams={preserve}
+                    basePath="/invoices"
+                  />
+                </TableHead>
+                <TableHead>Client</TableHead>
+                <TableHead>
+                  <SortableHeader
+                    field="invoiceDate"
+                    label="Date"
+                    currentSort={params.sort}
+                    currentDir={params.dir}
+                    preserveParams={preserve}
+                    basePath="/invoices"
+                  />
+                </TableHead>
+                <TableHead className="text-right">
+                  <SortableHeader
+                    field="totalAmount"
+                    label="Total"
+                    currentSort={params.sort}
+                    currentDir={params.dir}
+                    preserveParams={preserve}
+                    basePath="/invoices"
+                    className="justify-end"
+                  />
+                </TableHead>
                 <TableHead>Allocated</TableHead>
                 <TableHead>Paid</TableHead>
                 <TableHead>Concur</TableHead>
@@ -166,6 +229,15 @@ export default async function InvoicesPage() {
                 const isFullyAllocated =
                   Math.abs(allocatedTotal - invoiceTotal) < 0.01;
 
+                const vendorName =
+                  invoice.detectedVendorName ??
+                  PLATFORM_TO_VENDOR[invoice.vendor] ??
+                  invoice.vendor;
+
+                const clientLabel = invoice.detectedClient
+                  ? invoice.detectedClient.name
+                  : invoice.detectedClientName;
+
                 return (
                   <TableRow key={invoice.id}>
                     <TableCell>
@@ -178,9 +250,23 @@ export default async function InvoicesPage() {
                     <TableCell className="font-medium">
                       {invoice.invoiceNumber}
                     </TableCell>
+                    <TableCell>{vendorName}</TableCell>
                     <TableCell>
                       {PLATFORMS.find((p) => p.value === invoice.vendor)?.label ||
                         invoice.vendor}
+                    </TableCell>
+                    <TableCell>
+                      {clientLabel ? (
+                        invoice.detectedClient ? (
+                          <span>{clientLabel}</span>
+                        ) : (
+                          <span className="italic text-muted-foreground">
+                            {clientLabel}
+                          </span>
+                        )
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell>{formatDate(invoice.invoiceDate)}</TableCell>
                     <TableCell className="text-right tabular-nums">
