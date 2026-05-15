@@ -60,12 +60,14 @@ model VerificationToken {
 // Application models
 
 model Client {
-  id        String   @id @default(cuid())
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  name        String
+  nameAliases String[] @default([])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  mbas      MBA[]
+  mbas              MBA[]
+  detectedInvoices  Invoice[] @relation("DetectedClient")
 }
 
 model MBA {
@@ -158,6 +160,11 @@ model Invoice {
   parseConfidence Float?
   parseErrors     String?
 
+  // Parsed entity hints (surfaced from ingestion; user-correctable on detail page)
+  detectedClientId   String?
+  detectedClientName String?
+  detectedVendorName String?
+
   // Concur integration
   concurInvoiceId     String?          @unique // PaymentRequestId from Concur
   concurSyncStatus    ConcurSyncStatus @default(NOT_SYNCED)
@@ -166,8 +173,10 @@ model Invoice {
 
   allocations   InvoiceAllocation[]
   lineItems     VendorInvoiceLineItem[]
+  detectedClient Client? @relation("DetectedClient", fields: [detectedClientId], references: [id], onDelete: SetNull)
 
   @@unique([vendor, invoiceNumber])
+  @@index([detectedClientId])
 }
 
 enum InvoiceStatus {
