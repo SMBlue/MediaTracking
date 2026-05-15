@@ -1,8 +1,9 @@
 import { prisma } from "./db";
+import { matchClientFromString } from "./parsing/match-client";
 
 /**
  * Try to match a parsed client name to an existing client in the database.
- * Uses case-insensitive substring matching.
+ * Loads candidates with aliases and delegates to the pure matcher.
  */
 export async function matchClient(
   clientName: string | null
@@ -10,26 +11,12 @@ export async function matchClient(
   if (!clientName) return null;
 
   const clients = await prisma.client.findMany({
-    select: { id: true, name: true },
+    select: { id: true, name: true, nameAliases: true },
   });
 
-  const normalized = clientName.toLowerCase().trim();
-
-  // Exact match first
-  const exact = clients.find(
-    (c) => c.name.toLowerCase().trim() === normalized
-  );
-  if (exact) return exact;
-
-  // Substring match (client name appears in parsed name or vice versa)
-  const partial = clients.find(
-    (c) =>
-      normalized.includes(c.name.toLowerCase().trim()) ||
-      c.name.toLowerCase().trim().includes(normalized)
-  );
-  if (partial) return partial;
-
-  return null;
+  const hit = matchClientFromString(clientName, clients);
+  if (!hit) return null;
+  return { id: hit.clientId, name: hit.canonicalName };
 }
 
 /**

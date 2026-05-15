@@ -168,6 +168,16 @@ export async function GET(request: NextRequest) {
           mbaId: item.mbaId || undefined,
         }));
 
+        const rawDetectedClient = parsed.clientName
+          ? String(parsed.clientName).trim() || null
+          : null;
+        const rawDetectedVendor =
+          // Claude sometimes returns a vendor display name distinct from the
+          // platform enum — keep it separate for the UI's Vendor column.
+          (parsed as { vendorName?: unknown }).vendorName
+            ? String((parsed as { vendorName?: unknown }).vendorName).trim() || null
+            : null;
+
         const invoice = await prisma.invoice.create({
           data: {
             vendor: mapPlatform(parsed.platform),
@@ -180,11 +190,9 @@ export async function GET(request: NextRequest) {
             emailSubject: email.subject,
             emailReceivedAt: email.receivedAt,
             parseConfidence: Number(parsed.overallConfidence) || 0,
-            notes: matchedClient
-              ? `Auto-matched client: ${matchedClient.name}`
-              : parsed.clientName
-                ? `Detected client: ${parsed.clientName} (no match found)`
-                : undefined,
+            detectedClientId: matchedClient?.id ?? null,
+            detectedClientName: matchedClient?.name ?? rawDetectedClient,
+            detectedVendorName: rawDetectedVendor,
             lineItems: {
               create: lineItems,
             },
