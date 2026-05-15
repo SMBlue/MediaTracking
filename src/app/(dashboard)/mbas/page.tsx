@@ -20,6 +20,7 @@ import { AlertBanner } from "@/components/ui/alert-banner";
 import { Badge } from "@/components/ui/badge";
 import { AddClientModal } from "@/components/add-client-modal";
 import { ClientFilter } from "./client-filter";
+import { SavedViewsMenu } from "@/components/saved-views-menu";
 
 async function getClients() {
   return prisma.client.findMany({
@@ -126,6 +127,8 @@ export default async function MBAsPage({
           </Button>
         )}
       </div>
+
+      <SavedViewsMenu scope="mbas" />
 
       {needsReconCount > 0 && (
         <AlertBanner variant="info">

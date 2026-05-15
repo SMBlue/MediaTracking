@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { ConcurStatusBadge } from "@/components/concur-status-badge";
 import { InvoiceFilters } from "@/components/invoice-filters";
 import { SortableHeader } from "@/components/sortable-header";
+import { SavedViewsMenu } from "@/components/saved-views-menu";
 import { prisma } from "@/lib/db";
 import {
   parseInvoiceListParams,
@@ -124,6 +125,8 @@ export default async function InvoicesPage({
         clients={clientOptions}
         platforms={PLATFORMS}
       />
+
+      <SavedViewsMenu scope="invoices" />
 
       {(totalUnpaid > 0 || totalCredits > 0) && (
         <div className="flex gap-4">
