@@ -19,6 +19,8 @@ import { ConcurStatusBadge } from "@/components/concur-status-badge";
 import { InvoiceFilters } from "@/components/invoice-filters";
 import { SortableHeader } from "@/components/sortable-header";
 import { SavedViewsMenu } from "@/components/saved-views-menu";
+import { SyncNowButton } from "@/components/sync-now-button";
+import { SyncCadence } from "@/components/sync-cadence";
 import { prisma } from "@/lib/db";
 import {
   parseInvoiceListParams,
@@ -115,11 +117,15 @@ export default async function InvoicesPage({
         title="Vendor Invoices"
         description="Track invoices from platforms (Google, Meta, etc.) and payment status"
         actions={
-          <Button asChild>
-            <Link href="/invoices/new">+ New Invoice</Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <SyncNowButton />
+            <Button asChild>
+              <Link href="/invoices/new">+ New Invoice</Link>
+            </Button>
+          </div>
         }
       />
+      <SyncCadence />
 
       <InvoiceFilters
         clients={clientOptions}
