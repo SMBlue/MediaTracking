@@ -83,7 +83,7 @@ async function updateMBAStatus(formData: FormData) {
   "use server";
 
   const id = formData.get("id") as string;
-  const status = formData.get("status") as "DRAFT" | "ACTIVE" | "RECONCILING" | "CLOSED";
+  const status = formData.get("status") as "ACTIVE" | "RECONCILING" | "CLOSED";
 
   const existing = await prisma.mBA.findUnique({ where: { id } });
 

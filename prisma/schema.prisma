@@ -122,7 +122,6 @@ model MBA {
 }
 
 enum MBAStatus {
-  DRAFT
   ACTIVE
   RECONCILING
   CLOSED
@@ -193,7 +192,6 @@ model Invoice {
 }
 
 enum InvoiceStatus {
-  DRAFT
   CONFIRMED
 }
 

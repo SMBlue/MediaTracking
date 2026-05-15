@@ -43,7 +43,7 @@ async function createMBA(formData: FormData) {
   const currency = formData.get("currency") as string;
   const startDate = formData.get("startDate") as string;
   const endDate = formData.get("endDate") as string;
-  const status = formData.get("status") as "DRAFT" | "ACTIVE" | "RECONCILING" | "CLOSED";
+  const status = formData.get("status") as "ACTIVE" | "RECONCILING" | "CLOSED";
   const netsuiteProjectNumber = (formData.get("netsuiteProjectNumber") as string)?.trim() || null;
 
   if (!clientId || !name || isNaN(budget) || !startDate || !endDate) {
