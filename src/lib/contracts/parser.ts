@@ -7,7 +7,9 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
-import pdfParse from "pdf-parse";
+// See note in src/lib/pdf-parser.ts — import the inner module to
+// avoid pdf-parse's index.js debug block firing at module load.
+import pdfParse from "pdf-parse/lib/pdf-parse.js";
 
 export interface ParsedContract {
   /** Client name as it appears on the contract (e.g., "Michael J. Fox Foundation") */
