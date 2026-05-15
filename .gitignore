@@ -27,6 +27,13 @@
 .DS_Store
 *.pem
 
+# local working materials in docs/ — Zoom recordings and audio
+# transcripts that live alongside the persisted docs but aren't
+# meant to ship with the repo.
+docs/*.vtt
+docs/*.m4a
+docs/audio*.txt
+
 # debug
 npm-debug.log*
 yarn-debug.log*
