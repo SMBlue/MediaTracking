@@ -153,12 +153,15 @@ model Invoice {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  // Email ingestion fields
-  emailMessageId  String?   @unique
-  emailSubject    String?
-  emailReceivedAt DateTime?
-  parseConfidence Float?
-  parseErrors     String?
+  // Email ingestion fields. One Invoice row per email attachment, so the
+  // uniqueness is on the compound (emailMessageId, attachmentFilename).
+  // Body-only invoices use a null attachmentFilename.
+  emailMessageId     String?
+  attachmentFilename String?
+  emailSubject       String?
+  emailReceivedAt    DateTime?
+  parseConfidence    Float?
+  parseErrors        String?
 
   // Parsed entity hints (surfaced from ingestion; user-correctable on detail page)
   detectedClientId   String?
@@ -176,7 +179,9 @@ model Invoice {
   detectedClient Client? @relation("DetectedClient", fields: [detectedClientId], references: [id], onDelete: SetNull)
 
   @@unique([vendor, invoiceNumber])
+  @@unique([emailMessageId, attachmentFilename])
   @@index([detectedClientId])
+  @@index([emailMessageId])
 }
 
 enum InvoiceStatus {
