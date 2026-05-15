@@ -156,7 +156,7 @@ export default async function MBAsPage({
                 <TableHead>NS</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead className="text-right">Budget</TableHead>
-                <TableHead className="text-right">Invoiced</TableHead>
+                <TableHead className="text-right">Vendor Invoiced</TableHead>
                 <TableHead className="text-right">Remaining</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Client Paid</TableHead>

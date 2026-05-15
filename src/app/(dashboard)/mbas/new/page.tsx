@@ -235,7 +235,6 @@ export default async function NewMBAPage({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="DRAFT">Draft</SelectItem>
                   <SelectItem value="ACTIVE">Active</SelectItem>
                   <SelectItem value="RECONCILING">Reconciling</SelectItem>
                   <SelectItem value="CLOSED">Closed</SelectItem>
