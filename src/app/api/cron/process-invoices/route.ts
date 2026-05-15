@@ -174,7 +174,11 @@ export async function GET(request: NextRequest) {
                 invoiceNumber,
                 invoiceDate,
                 totalAmount,
-                status: "DRAFT",
+                // Email-parsed invoices land in CONFIRMED directly; the
+                // separate DRAFT review queue is being retired (PR #11).
+                // Low confidence still surfaces via parseConfidence on
+                // the invoice detail page so users can spot-check.
+                status: "CONFIRMED",
                 sourceType: "EMAIL_PARSED",
                 emailMessageId: email.id,
                 attachmentFilename: unit.attachmentFilename,
