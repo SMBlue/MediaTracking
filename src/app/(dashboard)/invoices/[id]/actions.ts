@@ -10,7 +10,7 @@ import { pushInvoiceToConcur } from "@/lib/concur/invoices";
 export async function syncInvoiceToConcur(formData: FormData) {
   const id = formData.get("id") as string;
 
-  // If this is a retry, clear the previous failure first so the push isn't blocked.
+  // If this is a retry, clear the previous failure so the push isn't blocked.
   const existing = await prisma.invoice.findUnique({
     where: { id },
     select: { concurInvoiceId: true, concurSyncStatus: true },
@@ -29,9 +29,17 @@ export async function syncInvoiceToConcur(formData: FormData) {
   try {
     await pushInvoiceToConcur(id);
   } catch (err) {
-    // pushInvoiceToConcur already records the failure on the invoice; we only
-    // need to make sure the page re-renders so the user sees the new status.
+    // Surface the failure on the invoice so the UI can show it. pushInvoiceToConcur
+    // by itself doesn't update state on direct throw (only the bulk runner does).
     console.error("Manual Concur sync failed:", err);
+    await prisma.invoice.update({
+      where: { id },
+      data: {
+        concurSyncStatus: "SYNC_FAILED",
+        concurLastSyncAt: new Date(),
+        concurLastSyncError: String(err).slice(0, 1000),
+      },
+    });
   }
 
   redirect(`/invoices/${id}`);
