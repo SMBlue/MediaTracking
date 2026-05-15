@@ -83,6 +83,106 @@ export async function deleteInvoice(formData: FormData) {
   redirect("/invoices");
 }
 
+const PLATFORM_VALUES = [
+  "GOOGLE_ADS",
+  "META",
+  "BING",
+  "TIKTOK",
+  "LINKEDIN",
+  "OTHER",
+] as const;
+type PlatformValue = (typeof PLATFORM_VALUES)[number];
+
+export async function updateInvoicePlatform(
+  invoiceId: string,
+  platform: PlatformValue
+) {
+  if (!PLATFORM_VALUES.includes(platform)) {
+    throw new Error(`Invalid platform: ${platform}`);
+  }
+
+  const existing = await prisma.invoice.findUniqueOrThrow({
+    where: { id: invoiceId },
+    select: { vendor: true },
+  });
+  if (existing.vendor === platform) return;
+
+  await prisma.invoice.update({
+    where: { id: invoiceId },
+    data: { vendor: platform },
+  });
+
+  await logAudit({
+    entityType: "Invoice",
+    entityId: invoiceId,
+    action: "UPDATE",
+    changes: { vendor: { old: existing.vendor, new: platform } },
+  });
+
+  revalidatePath(`/invoices/${invoiceId}`);
+}
+
+export async function updateInvoiceClient(
+  invoiceId: string,
+  clientId: string | null
+) {
+  const existing = await prisma.invoice.findUniqueOrThrow({
+    where: { id: invoiceId },
+    select: { detectedClientId: true, detectedClientName: true },
+  });
+
+  if (clientId === null) {
+    if (existing.detectedClientId === null) return;
+    await prisma.invoice.update({
+      where: { id: invoiceId },
+      data: { detectedClientId: null, detectedClientName: null },
+    });
+    await logAudit({
+      entityType: "Invoice",
+      entityId: invoiceId,
+      action: "UPDATE",
+      changes: {
+        detectedClientId: { old: existing.detectedClientId, new: null },
+        detectedClientName: { old: existing.detectedClientName, new: null },
+      },
+    });
+    revalidatePath(`/invoices/${invoiceId}`);
+    return;
+  }
+
+  const client = await prisma.client.findUniqueOrThrow({
+    where: { id: clientId },
+    select: { id: true, name: true },
+  });
+
+  if (
+    existing.detectedClientId === client.id &&
+    existing.detectedClientName === client.name
+  ) {
+    return;
+  }
+
+  await prisma.invoice.update({
+    where: { id: invoiceId },
+    data: {
+      detectedClientId: client.id,
+      detectedClientName: client.name,
+    },
+  });
+
+  await logAudit({
+    entityType: "Invoice",
+    entityId: invoiceId,
+    action: "UPDATE",
+    changes: {
+      detectedClientId: { old: existing.detectedClientId, new: client.id },
+      detectedClientName: { old: existing.detectedClientName, new: client.name },
+    },
+  });
+
+  revalidatePath(`/invoices/${invoiceId}`);
+}
+
 export async function bulkAssignLineItems(
   invoiceId: string,
   assignments: Array<{ lineItemId: string; mbaId: string | null }>

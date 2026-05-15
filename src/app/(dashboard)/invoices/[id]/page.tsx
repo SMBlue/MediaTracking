@@ -18,6 +18,10 @@ import { prisma } from "@/lib/db";
 import { LineItemAssignments } from "@/components/line-item-assignments";
 import { ConcurStatusBadge } from "@/components/concur-status-badge";
 import {
+  InvoicePlatformEdit,
+  InvoiceClientEdit,
+} from "@/components/invoice-inline-edits";
+import {
   togglePaidStatus,
   deleteInvoice,
   syncInvoiceToConcur,
@@ -69,6 +73,13 @@ async function getActiveMBAs() {
   });
 }
 
+async function getClientOptions() {
+  return prisma.client.findMany({
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  });
+}
+
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -92,7 +103,11 @@ export default async function InvoiceDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [invoice, activeMBAs] = await Promise.all([getInvoice(id), getActiveMBAs()]);
+  const [invoice, activeMBAs, clientOptions] = await Promise.all([
+    getInvoice(id),
+    getActiveMBAs(),
+    getClientOptions(),
+  ]);
 
   const totalAmount = Number(invoice.totalAmount);
   const allocatedTotal = invoice.allocations.reduce(
@@ -106,13 +121,25 @@ export default async function InvoiceDetailPage({
     <div className="space-y-6">
       <PageHeader
         title={invoice.invoiceNumber}
-        description={`${PLATFORMS.find((p) => p.value === invoice.vendor)?.label || invoice.vendor} \u00b7 ${formatDate(invoice.invoiceDate)}`}
+        description={formatDate(invoice.invoiceDate)}
         breadcrumbs={[
           { label: "Dashboard", href: "/" },
           { label: "Vendor Invoices", href: "/invoices" },
           { label: invoice.invoiceNumber },
         ]}
       />
+
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+        <InvoicePlatformEdit
+          invoiceId={invoice.id}
+          currentPlatform={invoice.vendor}
+        />
+        <InvoiceClientEdit
+          invoiceId={invoice.id}
+          currentClientId={invoice.detectedClientId}
+          clients={clientOptions}
+        />
+      </div>
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
