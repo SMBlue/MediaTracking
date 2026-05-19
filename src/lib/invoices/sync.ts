@@ -30,6 +30,7 @@ export type SyncInvoicesResult = {
 };
 
 import { looksLikeMbaContract } from "./mba-skip";
+import { isBlueStateAgency } from "./blue-state-guard";
 
 const DEFAULT_MAX_EMAILS_PER_RUN = 100;
 
@@ -129,7 +130,13 @@ export async function syncInvoices(
             continue;
           }
 
-          const matchedClient = await matchClient(parsed.clientName);
+          // Hard guard: Blue State is the agency, never a client. If
+          // Claude ignored the prompt and returned a bill-to as the
+          // client, strip it before we try to match or persist.
+          const sanitizedClientName = isBlueStateAgency(parsed.clientName)
+            ? null
+            : parsed.clientName;
+          const matchedClient = await matchClient(sanitizedClientName);
 
           const parsedLineItems = (parsed.lineItems || [])
             .filter((item) => item.campaignName)
@@ -155,8 +162,8 @@ export async function syncInvoices(
             mbaId: item.mbaId || undefined,
           }));
 
-          const rawDetectedClient = parsed.clientName
-            ? String(parsed.clientName).trim() || null
+          const rawDetectedClient = sanitizedClientName
+            ? String(sanitizedClientName).trim() || null
             : null;
           const rawDetectedVendor = parsed.vendorName
             ? String(parsed.vendorName).trim() || null

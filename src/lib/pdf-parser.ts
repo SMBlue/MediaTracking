@@ -85,6 +85,14 @@ This inbox (mediainvoices@) receives all kinds of documents — invoices, MBAs (
 
 An invoice typically has: an invoice number, a date, line items with amounts, and a total. MBAs, contracts, and IOs are NOT invoices.
 
+IMPORTANT: "clientName" must be the *advertiser / campaign client* the
+media is being purchased for — never the bill-to. Blue State (also
+appearing as "Blue State, LLC", "Blue State Digital", "Blue State
+Digital Inc.", "Blue State (London)") is the agency receiving the
+invoice, NOT a client. If the only client-like name on the invoice is
+Blue State, return null for clientName. The real client is on the
+campaign / project / line items, not the bill-to block.
+
 EMAIL CONTEXT:
 From: ${emailContext.from}
 Subject: ${emailContext.subject}
