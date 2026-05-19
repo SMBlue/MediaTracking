@@ -19,6 +19,13 @@ export interface ParsedLineItem {
 
 export interface ParsedInvoice {
   vendor: string;
+  /**
+   * Display name of the actual vendor company (e.g., "Meta Platforms, Inc.",
+   * "Spotify USA Inc.", "People First Marketing"). Distinct from `vendor`,
+   * which is sometimes just the platform label. Used to populate
+   * Invoice.detectedVendorName for the Vendor column on the list page.
+   */
+  vendorName: string | null;
   invoiceNumber: string;
   invoiceDate: string; // ISO date string
   totalAmount: number;
@@ -101,6 +108,7 @@ If this IS an invoice:
   "reason": "brief description",
   "invoice": {
     "vendor": "vendor/platform name",
+    "vendorName": "full legal/display name of the billing company as it appears on the invoice (e.g., 'Meta Platforms, Inc.', 'Spotify USA Inc.', 'People First Marketing', 'Nevada News Bureau, Inc.') — use null only when the vendor name truly isn't on the document",
     "invoiceNumber": "invoice number",
     "invoiceDate": "YYYY-MM-DD",
     "totalAmount": 0.00,

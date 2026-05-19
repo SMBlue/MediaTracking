@@ -85,13 +85,22 @@ export async function fetchUnprocessedEmails(
 
   const gmail = getGmailClient();
 
-  // Search for emails with PDF attachments that haven't been labeled as processed
-  // Pre-filters to reduce Claude API calls:
+  // Search for emails with PDF attachments that haven't been labeled as processed.
+  // Pre-filters to reduce Claude API calls (each excluded message is one
+  // fewer billed Claude call):
   //   - Require PDF attachment (skip signature PNGs)
   //   - Exclude reply threads (internal conversations)
   //   - Exclude close-out emails (MBA close-out docs, not invoices)
+  //   - Exclude signed-MBA forwards that land here by mistake — Gmail
+  //     forwarding still routes some signed MBAs to the invoice mailbox.
+  //     Subject and filename both consistently carry "Signed" + "MBA".
   let query =
-    "has:attachment filename:pdf -label:mba-tracker-processed -subject:Re: -subject:(Close out) -subject:(close out)";
+    "has:attachment filename:pdf" +
+    " -label:mba-tracker-processed" +
+    " -subject:Re:" +
+    " -subject:(Close out) -subject:(close out)" +
+    ' -subject:"Signed MBA" -subject:"Signed MBAs"' +
+    ' -filename:"Signed Blue State MBA"';
   if (afterDate) {
     query += ` after:${afterDate}`;
   }

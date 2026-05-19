@@ -29,6 +29,8 @@ export type SyncInvoicesResult = {
   errors: string[];
 };
 
+import { looksLikeMbaContract } from "./mba-skip";
+
 const DEFAULT_MAX_EMAILS_PER_RUN = 100;
 
 export async function syncInvoices(
@@ -53,6 +55,14 @@ export async function syncInvoices(
         const pdfBufferByFilename = new Map<string, Buffer>();
 
         for (const attachment of email.attachments) {
+          // Belt-and-suspenders filter for misrouted MBA contract emails
+          // that the Gmail query couldn't exclude. Saves a Claude call.
+          if (looksLikeMbaContract(attachment.filename, email.subject)) {
+            console.log(
+              `Skipped likely MBA contract: ${attachment.filename} on email ${email.id} (${email.subject})`
+            );
+            continue;
+          }
           try {
             const buffer = await downloadAttachment(
               email.id,
@@ -148,10 +158,9 @@ export async function syncInvoices(
           const rawDetectedClient = parsed.clientName
             ? String(parsed.clientName).trim() || null
             : null;
-          const rawDetectedVendor =
-            (parsed as { vendorName?: unknown }).vendorName
-              ? String((parsed as { vendorName?: unknown }).vendorName).trim() || null
-              : null;
+          const rawDetectedVendor = parsed.vendorName
+            ? String(parsed.vendorName).trim() || null
+            : null;
 
           try {
             const pdfBuffer = unit.attachmentFilename
